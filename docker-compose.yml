@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - /entrypoint.sh
+    command:
+      [
+        "redis-server",
+        "--save",
+        "60",
+        "1",
+        "--appendonly",
+        "yes",
+        "--dir",
+        "/data",
+      ]
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./docker/redis/entrypoint.sh:/entrypoint.sh:ro
+      - ./db/data:/data
+      - ./db/backups:/backups
+      - ./:/project
+    environment:
+      BACKUP_DIR: /backups
+      DATA_DIR: /data
+      PROJECT_DIR: /project
+
+  redis-backup:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    depends_on:
+      - redis
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - >
+        mkdir -p /var/log &&
+        echo "Starting cron for Redis backups" &&
+        crond -f -l 2
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      BACKUP_DIR: /backups
+      DATA_FILE: /data/dump.rdb
+      TTL_DAYS: "7"
+    volumes:
+      - ./docker/backup/redis-backup.sh:/scripts/redis-backup.sh:ro
+      - ./docker/backup/crontab:/etc/crontabs/root:ro
+      - ./db/data:/data:ro
+      - ./db/backups:/backups

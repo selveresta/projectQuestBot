@@ -1,0 +1,25 @@
+import type { CaptchaChallenge } from "./captcha";
+import type { QuestId } from "./quest";
+
+export interface QuestProgressEntry {
+  completed: boolean;
+  completedAt?: string;
+  metadata?: string;
+}
+
+export type QuestProgress = Record<QuestId, QuestProgressEntry>;
+
+export interface UserRecord {
+  userId: number;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  captchaPassed: boolean;
+  captchaAttempts: number;
+  pendingCaptcha?: CaptchaChallenge | null;
+  quests: QuestProgress;
+  email?: string;
+  wallet?: string;
+  createdAt: string;
+  updatedAt: string;
+}
