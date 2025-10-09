@@ -2,6 +2,7 @@ import { Composer } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 import { ensureTelegramMembership } from "../../helpers/membership";
+import { buildMainMenuKeyboard } from "../../ui/replyKeyboards";
 import { buildCaptchaKeyboard } from "../captcha";
 
 export function registerStartCommand(composer: Composer<BotContext>): void {
@@ -50,12 +51,13 @@ export function registerStartCommand(composer: Composer<BotContext>): void {
 		const completedCount = questStatus.filter((item) => item.completed).length;
 		const total = questStatus.length;
 
-		await ctx.reply(
-			[
-				"🎉 Welcome back!",
-				`You have completed ${completedCount}/${total} quests.`,
-				"Use /status to review progress or to provide any missing information.",
-			].join("\n")
-		);
-	});
-}
+			await ctx.reply(
+				[
+					"🎉 Welcome back!",
+					`You have completed ${completedCount}/${total} quests.`,
+					"Use the buttons below to check status or submit remaining details.",
+				].join("\n"),
+				{ reply_markup: buildMainMenuKeyboard() }
+			);
+		});
+	}

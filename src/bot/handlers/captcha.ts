@@ -2,6 +2,7 @@ import { Composer, InlineKeyboard } from "grammy";
 
 import type { BotContext } from "../../types/context";
 import { ensureTelegramMembership } from "../helpers/membership";
+import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
 
 export function buildCaptchaKeyboard(options: string[]): InlineKeyboard {
 	const keyboard = new InlineKeyboard();
@@ -91,8 +92,14 @@ export function registerCaptchaHandlers(composer: Composer<BotContext>): void {
 			})
 			.join("\n");
 
-		await ctx.reply(
-			["You're all set! Here is your current quest status:", summary, "", "Use /status at any time to see your progress."].join("\n")
-		);
-	});
-}
+			await ctx.reply(
+				[
+					"You're all set! Here is your current quest status:",
+					summary,
+					"",
+					"Use the buttons below to keep track of your progress.",
+				].join("\n"),
+				{ reply_markup: buildMainMenuKeyboard() }
+			);
+		});
+	}
