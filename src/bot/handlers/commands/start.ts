@@ -1,12 +1,16 @@
 import { Composer } from "grammy";
 
 import type { BotContext } from "../../../types/context";
-import { ensureTelegramMembership } from "../../helpers/membership";
+import { TelegramMembershipVerifier } from "../../helpers/membership";
 import { buildMainMenuKeyboard } from "../../ui/replyKeyboards";
-import { buildCaptchaKeyboard } from "../captcha";
+import { CaptchaHandler } from "../captcha";
 
-export function registerStartCommand(composer: Composer<BotContext>): void {
-	composer.command("start", async (ctx) => {
+export class StartCommandHandler {
+	register(composer: Composer<BotContext>): void {
+		composer.command("start", this.handleStart.bind(this));
+	}
+
+	private async handleStart(ctx: BotContext): Promise<void> {
 		if (!ctx.from) {
 			await ctx.reply("I can only chat with real Telegram users.");
 			return;
@@ -28,36 +32,49 @@ export function registerStartCommand(composer: Composer<BotContext>): void {
 		}
 
 		if (!user.captchaPassed) {
-			const challenge = ctx.services.captchaService.createChallenge();
-			await repo.setCaptchaChallenge(userId, challenge);
-			await ctx.reply(
-				[
-					"👋 Welcome to Project Quest!",
-					"",
-					"Before you can join the giveaway we just need a quick verification.",
-					challenge.prompt,
-				].join("\n"),
-				{ reply_markup: buildCaptchaKeyboard(challenge.options) }
-			);
+			await this.promptCaptcha(ctx, userId);
 			return;
 		}
 
-		const membershipOk = await ensureTelegramMembership(ctx);
-		if (!membershipOk) {
+		const channelOk = await TelegramMembershipVerifier.ensure(ctx, "channel");
+		if (!channelOk) {
 			return;
 		}
 
-		const questStatus = await ctx.services.questService.buildQuestStatus(userId);
-		const completedCount = questStatus.filter((item) => item.completed).length;
-		const total = questStatus.length;
+		const chatOk = await TelegramMembershipVerifier.ensure(ctx, "chat");
+		if (!chatOk) {
+			return;
+		}
 
-			await ctx.reply(
-				[
-					"🎉 Welcome back!",
-					`You have completed ${completedCount}/${total} quests.`,
-					"Use the buttons below to check status or submit remaining details.",
-				].join("\n"),
-				{ reply_markup: buildMainMenuKeyboard() }
-			);
-		});
+		await this.sendProgress(ctx, userId);
 	}
+
+	private async promptCaptcha(ctx: BotContext, userId: number): Promise<void> {
+		const challenge = ctx.services.captchaService.createChallenge();
+		await ctx.services.userRepository.setCaptchaChallenge(userId, challenge);
+		await ctx.reply(
+			[
+				"👋 Welcome to Project Quest!",
+				"",
+				"Before you can join the giveaway we just need a quick verification.",
+				challenge.prompt,
+			].join("\n"),
+			{ reply_markup: CaptchaHandler.buildKeyboard(challenge.options) }
+		);
+	}
+
+		private async sendProgress(ctx: BotContext, userId: number): Promise<void> {
+			const questStatus = await ctx.services.questService.buildQuestStatus(userId);
+			const completedCount = questStatus.filter((item) => item.completed).length;
+			const total = questStatus.length;
+
+		await ctx.reply(
+			[
+				"🎉 Welcome back!",
+				`You have completed ${completedCount}/${total} quests.`,
+				"Use the menu below to continue with your quests.",
+			].join("\n"),
+			{ reply_markup: buildMainMenuKeyboard(ctx.config) }
+		);
+	}
+}

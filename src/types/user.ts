@@ -20,6 +20,9 @@ export interface UserRecord {
   quests: QuestProgress;
   email?: string;
   wallet?: string;
+  xProfileUrl?: string;
+  instagramProfileUrl?: string;
+  discordUserId?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -2,8 +2,12 @@ import { Composer } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 
-export function registerAdminCommands(composer: Composer<BotContext>): void {
-	composer.command("admin", async (ctx) => {
+export class AdminCommandHandler {
+	register(composer: Composer<BotContext>): void {
+		composer.command("admin", this.handleAdminDashboard.bind(this));
+	}
+
+	private async handleAdminDashboard(ctx: BotContext): Promise<void> {
 		if (!ctx.from) {
 			return;
 		}
@@ -30,5 +34,5 @@ export function registerAdminCommands(composer: Composer<BotContext>): void {
 				"Phase 2 tasks are stubbed and will require external integrations.",
 			].join("\n")
 		);
-	});
+	}
 }

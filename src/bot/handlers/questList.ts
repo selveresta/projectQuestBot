@@ -1,0 +1,222 @@
+import { Composer, InlineKeyboard, Keyboard } from "grammy";
+
+import type { BotContext } from "../../types/context";
+import type { QuestId } from "../../types/quest";
+import type { QuestStatus } from "../../services/questService";
+import { getExistingSocialUrl, isSocialQuestId } from "../helpers/socialQuests";
+import {
+	BUTTON_BACK_TO_MENU,
+	BUTTON_CHECK_STATUS,
+	BUTTON_QUEST_LIST,
+	buildMainMenuKeyboard,
+} from "../ui/replyKeyboards";
+
+const QUEST_BUTTON_PREFIXES = ["✅", "⏳"] as const;
+
+export class QuestListHandler {
+	register(composer: Composer<BotContext>): void {
+		composer.command("quests", this.handleOpenList.bind(this));
+		composer.hears(BUTTON_QUEST_LIST, this.handleOpenList.bind(this));
+		composer.hears(BUTTON_BACK_TO_MENU, this.handleBackToMenu.bind(this));
+		composer.on("message:text", this.handleQuestSelection.bind(this));
+	}
+
+	private async handleOpenList(ctx: BotContext): Promise<void> {
+		if (!ctx.from) {
+			await ctx.reply("I need a Telegram user to show quests.");
+			return;
+		}
+
+		await this.sendQuestList(ctx, ctx.from.id);
+	}
+
+	private async handleBackToMenu(ctx: BotContext): Promise<void> {
+		await ctx.reply("Back to the main menu.", {
+			reply_markup: buildMainMenuKeyboard(ctx.config),
+		});
+	}
+
+	private async handleQuestSelection(ctx: BotContext, next: () => Promise<void>): Promise<void> {
+		if (!ctx.from) {
+			await next();
+			return;
+		}
+
+		const text = ctx.message?.text;
+		const questTitle = text ? this.extractQuestTitle(text) : undefined;
+		if (!questTitle) {
+			await next();
+			return;
+		}
+
+		const userId = ctx.from.id;
+		const questService = ctx.services.questService;
+		const statuses = await questService.buildQuestStatus(userId);
+		const target = statuses.find((status) => status.definition.title === questTitle);
+		if (!target) {
+			await next();
+			return;
+		}
+		if (!this.shouldDisplay(target)) {
+			await next();
+			return;
+		}
+
+		await this.sendQuestDetail(ctx, userId, target);
+	}
+
+	private async sendQuestList(ctx: BotContext, userId: number): Promise<void> {
+		const questService = ctx.services.questService;
+		const statuses = await questService.buildQuestStatus(userId);
+		const visibleStatuses = statuses.filter((status) => this.shouldDisplay(status));
+
+		const completedCount = statuses.filter((status) => status.completed).length;
+		const total = statuses.length;
+
+		const keyboard = this.buildQuestListKeyboard(visibleStatuses);
+
+		await ctx.reply(
+			[
+				"📋 Quest list",
+				`Progress: ${completedCount}/${total} quests completed.`,
+				"Choose a quest below to view details or mark it as complete.",
+			].join("\n"),
+			{ reply_markup: keyboard }
+		);
+	}
+
+	private async sendQuestDetail(ctx: BotContext, userId: number, status: QuestStatus): Promise<void> {
+		const questService = ctx.services.questService;
+		const { definition } = status;
+		const user = await questService.getUser(userId);
+		const existingSocialUrl = isSocialQuestId(definition.id)
+			? getExistingSocialUrl(user, definition.id)
+			: undefined;
+
+		const lines = [
+			`${status.completed ? "✅" : "⏳"} ${definition.title}`,
+			"",
+			definition.description,
+			"",
+			status.completed
+				? `Status: Completed${status.completedAt ? ` at ${status.completedAt}` : ""}.`
+				: "Status: Pending completion.",
+		];
+
+		if (existingSocialUrl) {
+			lines.push(`Stored profile: ${existingSocialUrl}`);
+		} else if (status.metadata) {
+			lines.push(`Submission: ${status.metadata}`);
+		}
+
+		if (definition.url) {
+			lines.push(`Official link: ${definition.url}`);
+		}
+
+		if (definition.id === "email_submit") {
+			lines.push("", "Use /email to submit or update your contact address.");
+		}
+
+		if (definition.id === "wallet_submit") {
+			lines.push("", "Use /wallet to submit or update your EVM wallet.");
+		}
+
+		if (definition.id === "discord_join") {
+			const inviteLink = ctx.config.links.discordInviteUrl;
+			if (user.discordUserId) {
+				lines.push("", `Linked Discord ID: ${user.discordUserId}`);
+			}
+			lines.push(
+				"",
+				"Discord verification steps:",
+				inviteLink ? `1. Join the Discord server: ${inviteLink}` : "1. Join the Discord server.",
+				`2. In the verification channel, send: !verify ${userId}`,
+				"3. Wait for the bot to confirm your verification here.",
+			);
+		}
+
+		if (definition.phase === "stub" && !status.completed) {
+			lines.push(
+				"",
+				"Phase 1 uses trust-based confirmation. Use the button below once you have finished the quest."
+			);
+		}
+
+		lines.push("", 'Tip: tap "🗂 Quest list" in the menu to switch quests.');
+
+		const keyboard = this.buildQuestDetailKeyboard(status, existingSocialUrl);
+
+		await ctx.reply(lines.join("\n"), {
+			reply_markup: keyboard,
+		});
+	}
+
+	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
+		const keyboard = new Keyboard();
+		statuses.forEach((status, index) => {
+			keyboard.text(this.questButtonLabel(status));
+			if ((index + 1) % 2 === 0) {
+				keyboard.row();
+			}
+		});
+
+		keyboard.row();
+		keyboard.text(BUTTON_BACK_TO_MENU);
+		keyboard.row();
+		keyboard.text(BUTTON_CHECK_STATUS);
+
+		return keyboard.resized().persistent();
+	}
+
+	private buildQuestDetailKeyboard(status: QuestStatus, existingSocialUrl?: string): InlineKeyboard {
+		const { definition } = status;
+		const keyboard = new InlineKeyboard();
+		const socialQuest = isSocialQuestId(definition.id);
+
+		if (definition.url) {
+			keyboard.url(definition.cta ?? "Open link", definition.url);
+		}
+
+		if (socialQuest) {
+			if (existingSocialUrl) {
+				if (definition.url) {
+					keyboard.row();
+				}
+				keyboard.url("Open profile link", existingSocialUrl);
+				keyboard.row();
+				keyboard.text("Update profile link", `quest:${definition.id}:complete`);
+			} else {
+				if (definition.url) {
+					keyboard.row();
+				}
+				keyboard.text("Submit profile link", `quest:${definition.id}:complete`);
+			}
+		} else if (!status.completed && definition.phase === "stub") {
+			if (definition.url) {
+				keyboard.row();
+			}
+			keyboard.text("Mark as complete", `quest:${definition.id}:complete`);
+		}
+
+		return keyboard;
+	}
+
+	private shouldDisplay(status: QuestStatus): boolean {
+		if (isSocialQuestId(status.definition.id) && !status.definition.url) {
+			return false;
+		}
+		return true;
+	}
+
+	private questButtonLabel(status: QuestStatus): string {
+		const prefix = status.completed ? "✅" : "⏳";
+		return `${prefix} ${status.definition.title}`;
+	}
+
+	private extractQuestTitle(text: string): string | undefined {
+		if (!QUEST_BUTTON_PREFIXES.some((prefix) => text.startsWith(prefix))) {
+			return undefined;
+		}
+		return text.replace(/^[^\s]+\s+/, "").trim() || undefined;
+	}
+}

@@ -1,34 +1,56 @@
 import type { RedisClient } from "../infra/redis";
 import type { CaptchaChallenge } from "../types/captcha";
 import type { QuestId } from "../types/quest";
-import { QUEST_ID_LIST } from "../types/quest";
 import type { QuestProgress, QuestProgressEntry, UserRecord } from "../types/user";
 
 function now(): string {
 	return new Date().toISOString();
 }
 
-function buildDefaultQuestProgress(): QuestProgress {
-	return QUEST_ID_LIST.reduce((accumulator, questId) => {
-		accumulator[questId] = { completed: false };
-		return accumulator;
-	}, {} as QuestProgress);
-}
-
-function createUserRecord(userId: number): UserRecord {
-	const timestamp = now();
-	return {
-		userId,
-		captchaPassed: false,
-		captchaAttempts: 0,
-		quests: buildDefaultQuestProgress(),
-		createdAt: timestamp,
-		updatedAt: timestamp,
-	};
-}
-
 export class UserRepository {
-	constructor(private readonly redis: RedisClient) {}
+	constructor(
+		private readonly redis: RedisClient,
+		private readonly questIds: QuestId[]
+	) {}
+
+	private createDefaultQuestProgress(): QuestProgress {
+		return this.questIds.reduce((accumulator, questId) => {
+			accumulator[questId] = { completed: false };
+			return accumulator;
+		}, {} as QuestProgress);
+	}
+
+	private createUserRecord(userId: number): UserRecord {
+		const timestamp = now();
+		return {
+			userId,
+			captchaPassed: false,
+			captchaAttempts: 0,
+			quests: this.createDefaultQuestProgress(),
+			createdAt: timestamp,
+			updatedAt: timestamp,
+		};
+	}
+
+	private ensureQuestCoverage(user: UserRecord): UserRecord {
+		let changed = false;
+		const quests: QuestProgress = { ...(user.quests ?? {}) };
+		for (const questId of this.questIds) {
+			if (!quests[questId]) {
+				quests[questId] = { completed: false };
+				changed = true;
+			}
+		}
+		if (!changed) {
+			return user;
+		}
+		const updated: UserRecord = {
+			...user,
+			quests,
+			updatedAt: now(),
+		};
+		return updated;
+	}
 
 	private key(userId: number): string {
 		return `user:${userId}`;
@@ -42,7 +64,11 @@ export class UserRepository {
 
 		try {
 			const user: UserRecord = JSON.parse(payload);
-			return user;
+			const normalized = this.ensureQuestCoverage(user);
+			if (normalized !== user) {
+				await this.save(normalized);
+			}
+			return normalized;
 		} catch (error) {
 			console.error("[userRepository] failed to parse user", { userId, error });
 			return null;
@@ -65,7 +91,7 @@ export class UserRepository {
 		}
 
 		const created = {
-			...createUserRecord(userId),
+			...this.createUserRecord(userId),
 			...attributes,
 		};
 		await this.save(created);
@@ -78,7 +104,7 @@ export class UserRepository {
 	}
 
 	async setCaptchaChallenge(userId: number, challenge: CaptchaChallenge): Promise<UserRecord> {
-		const user = (await this.get(userId)) ?? createUserRecord(userId);
+		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
 		user.pendingCaptcha = challenge;
 		user.captchaPassed = false;
 		user.updatedAt = now();
@@ -99,7 +125,7 @@ export class UserRepository {
 	}
 
 	async incrementCaptchaAttempts(userId: number): Promise<UserRecord> {
-		const user = (await this.get(userId)) ?? createUserRecord(userId);
+		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
 		user.captchaAttempts += 1;
 		user.updatedAt = now();
 		await this.save(user);
@@ -107,7 +133,7 @@ export class UserRepository {
 	}
 
 	async markCaptchaPassed(userId: number): Promise<UserRecord> {
-		const user = (await this.get(userId)) ?? createUserRecord(userId);
+		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
 		user.captchaPassed = true;
 		user.pendingCaptcha = null;
 		user.updatedAt = now();
@@ -116,7 +142,7 @@ export class UserRepository {
 	}
 
 	async completeQuest(userId: number, questId: QuestId, metadata?: string): Promise<UserRecord> {
-		const user = (await this.get(userId)) ?? createUserRecord(userId);
+		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
 		const questProgress: QuestProgressEntry = user.quests[questId] ?? ({ completed: false } as QuestProgressEntry);
 
 		questProgress.completed = true;
@@ -131,8 +157,13 @@ export class UserRepository {
 		return user;
 	}
 
-	async updateContact(userId: number, contact: Partial<Pick<UserRecord, "email" | "wallet">>): Promise<UserRecord> {
-		const user = (await this.get(userId)) ?? createUserRecord(userId);
+	async updateContact(
+		userId: number,
+		contact: Partial<
+			Pick<UserRecord, "email" | "wallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">
+		>
+	): Promise<UserRecord> {
+		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
 		const updated: UserRecord = {
 			...user,
 			...contact,

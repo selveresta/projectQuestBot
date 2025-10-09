@@ -1,47 +1,84 @@
 import { Composer, InlineKeyboard } from "grammy";
 
 import type { BotContext } from "../../types/context";
-import { QUEST_DEFINITIONS, type QuestDefinition, type QuestId } from "../../types/quest";
+import type { QuestDefinition, QuestId } from "../../types/quest";
+import {
+	getExistingSocialUrl,
+	getSocialInvalidMessage,
+	getSocialSuccessMessage,
+	identifySocialQuestFromReply,
+	isSocialQuestId,
+	isValidSocialProfileUrl,
+	normalizeSocialProfileUrl,
+	promptForSocialProfile,
+	saveSocialProfile,
+} from "../helpers/socialQuests";
 
-function getStubQuests(): QuestDefinition[] {
-	return QUEST_DEFINITIONS.filter((quest) => quest.phase === "stub");
-}
-
-export function buildStubQuestKeyboard(pendingQuestIds: QuestId[]): InlineKeyboard | undefined {
-	if (pendingQuestIds.length === 0) {
-		return undefined;
+export class StubQuestHandler {
+	register(composer: Composer<BotContext>): void {
+		composer.callbackQuery(/^quest:(.+):complete$/, this.handleStubCompletion.bind(this));
+		composer.on("message:text", this.handleTextResponse.bind(this));
 	}
 
-	const stubDefinitions = getStubQuests().filter((quest) => pendingQuestIds.includes(quest.id));
-
-	if (stubDefinitions.length === 0) {
-		return undefined;
-	}
-
-	const keyboard = new InlineKeyboard();
-	stubDefinitions.forEach((quest, index) => {
-		keyboard.text(`✅ ${quest.title}`, `quest:${quest.id}:complete`);
-		if ((index + 1) % 2 === 0) {
-			keyboard.row();
+	buildKeyboard(definitions: QuestDefinition[], pendingQuestIds: QuestId[]): InlineKeyboard | undefined {
+		if (pendingQuestIds.length === 0) {
+			return undefined;
 		}
-	});
-	return keyboard;
-}
 
-export function registerQuestCompletionHandlers(composer: Composer<BotContext>): void {
-	composer.callbackQuery(/^quest:(.+):complete$/, async (ctx) => {
+		const stubDefinitions = definitions.filter(
+			(quest) => quest.phase === "stub" && pendingQuestIds.includes(quest.id)
+		);
+
+		if (stubDefinitions.length === 0) {
+			return undefined;
+		}
+
+		const keyboard = new InlineKeyboard();
+		stubDefinitions.forEach((quest, index) => {
+			keyboard.text(`✅ ${quest.title}`, `quest:${quest.id}:complete`);
+			if ((index + 1) % 2 === 0) {
+				keyboard.row();
+			}
+		});
+		return keyboard;
+	}
+
+	private async handleStubCompletion(ctx: BotContext): Promise<void> {
 		const questId = ctx.match?.[1] as QuestId | undefined;
 		if (!questId) {
 			await ctx.answerCallbackQuery({ text: "Unknown quest." });
 			return;
 		}
 
-		const quest = QUEST_DEFINITIONS.find((item) => item.id === questId);
+		const questService = ctx.services.questService;
+		const quest = questService.getDefinition(questId);
 		if (!quest || quest.phase !== "stub") {
 			await ctx.answerCallbackQuery({
 				text: "This quest requires automated verification (Phase 2).",
 				show_alert: true,
 			});
+			return;
+		}
+
+		if (isSocialQuestId(questId)) {
+			const userId = ctx.from?.id;
+			if (!userId) {
+				await ctx.answerCallbackQuery({
+					text: "Could not resolve your Telegram ID.",
+					show_alert: true,
+				});
+				return;
+			}
+
+			const user = await questService.getUser(userId);
+			const existing = getExistingSocialUrl(user, questId);
+			await ctx.answerCallbackQuery({
+				text: existing
+					? "Reply with your profile link to update it."
+					: "Reply with your profile link so we can record it.",
+				show_alert: false,
+			});
+			await promptForSocialProfile(ctx, questId, existing);
 			return;
 		}
 
@@ -54,9 +91,7 @@ export function registerQuestCompletionHandlers(composer: Composer<BotContext>):
 			return;
 		}
 
-		const questService = ctx.services.questService;
-		const user = await questService.getUser(userId);
-		const alreadyCompleted = user.quests[questId]?.completed;
+		const alreadyCompleted = await questService.hasCompletedQuest(userId, questId);
 		if (alreadyCompleted) {
 			await ctx.answerCallbackQuery({ text: "Already marked as complete." });
 			return;
@@ -69,5 +104,30 @@ export function registerQuestCompletionHandlers(composer: Composer<BotContext>):
 		});
 
 		await ctx.editMessageText("Quest recorded. Run /status to check your updated progress.");
-	});
+	}
+
+	private async handleTextResponse(ctx: BotContext, next: () => Promise<void>): Promise<void> {
+		if (!ctx.from) {
+			await next();
+			return;
+		}
+
+		const questId = identifySocialQuestFromReply(ctx);
+		if (!questId) {
+			await next();
+			return;
+		}
+
+		const input = ctx.message?.text?.trim() ?? "";
+		if (!isValidSocialProfileUrl(input, questId)) {
+			await ctx.reply(getSocialInvalidMessage(questId));
+			await promptForSocialProfile(ctx, questId);
+			return;
+		}
+
+		const userId = ctx.from.id;
+		const normalized = normalizeSocialProfileUrl(input);
+		await saveSocialProfile(ctx.services.questService, userId, questId, normalized);
+		await ctx.reply(getSocialSuccessMessage(questId));
+	}
 }
