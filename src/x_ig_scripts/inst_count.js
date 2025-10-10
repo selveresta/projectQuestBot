@@ -12,46 +12,10 @@ const WAIT_MAIN_MS = Number(process.env.WAIT_MAIN_MS) || 15000;
 const POST_NAV_PAUSE_MS = Number(process.env.POST_NAV_PAUSE_MS) || 5000;
 const CHROME_PATH = process.env.CHROME_PATH || null;
 const PROXY = process.env.PROXY || null;
-const HEADLESS = (process.env.HEADLESS || "true").toLowerCase() === "false";
+const HEADLESS = (process.env.HEADLESS || "true").toLowerCase() === "true";
 
 function sleep(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function parseCount(sample) {
-	if (!sample && sample !== 0) return null;
-	const raw = String(sample).trim();
-	if (!raw) return null;
-
-	const match = raw.match(/([\d]+(?:[.,\s]\d+)*)(\s*(?:[kKmMкКМм]|тис\.?|тыс\.?|млн\.?|мил\.?))?/i);
-	if (!match) return null;
-
-	let numberPart = match[1].replace(/\s+/g, "");
-	const suffix = match[2] ? match[2].trim().toLowerCase() : null;
-
-	if (numberPart.includes(".") && numberPart.includes(",")) {
-		numberPart = numberPart.replace(/,/g, "");
-	} else if (numberPart.includes(",") && !numberPart.includes(".")) {
-		const parts = numberPart.split(",");
-		if (parts[1] && parts[1].length === 3) {
-			numberPart = parts.join("");
-		} else {
-			numberPart = parts.join(".");
-		}
-	} else {
-		numberPart = numberPart.replace(/,/g, "");
-	}
-
-	let value = Number.parseFloat(numberPart);
-	if (!Number.isFinite(value)) return null;
-
-	if (suffix === "k" || suffix === "к" || suffix === "тис" || suffix === "тис." || suffix === "тыс" || suffix === "тыс.") {
-		value *= 1_000;
-	} else if (suffix === "m" || suffix === "м" || suffix === "млн" || suffix === "млн." || suffix === "мил" || suffix === "мил.") {
-		value *= 1_000_000;
-	}
-
-	return Math.round(value);
 }
 
 function findChromeExecutable() {
@@ -82,7 +46,10 @@ async function extractCountsFromPage(page) {
 			const raw = String(sample).trim();
 			if (!raw) return null;
 
-			const match = raw.match(/([\d]+(?:[.,\s]\d+)*)(\s*(?:[kKmMкКМм]|тис\.?|тыс\.?|млн\.?|мил\.?))?/i);
+			// Remove HTML entities like &nbsp;
+			const cleaned = raw.replace(/&nbsp;/g, "").replace(/&#160;/g, "");
+
+			const match = cleaned.match(/([\d]+(?:[.,\s]\d+)*)(\s*(?:[kKmMкКМм]|тис\.?|тыс\.?|млн\.?|мил\.?))?/i);
 			if (!match) return null;
 
 			let numberPart = match[1].replace(/\s+/g, "");
@@ -113,189 +80,58 @@ async function extractCountsFromPage(page) {
 			return Math.round(value);
 		};
 
-		const FOLLOWERS_TOKENS = [
-			"followers",
-			"підписники",
-			"підписник",
-			"подписчики",
-			"подписчик",
-			"читачі",
-			"seguidores",
-			"abonnés",
-			"abonnenten",
-			"abonentów",
-		];
-		const FOLLOWING_TOKENS = [
-			"following",
-			"стежить",
-			"підписки",
-			"підписок",
-			"подписки",
-			"подписок",
-			"seguindo",
-			"abonnements",
-			"folge",
-		];
-
-		const collectComputedContent = (element) => {
-			const values = [];
-			if (!element) return values;
-			try {
-				const before = window.getComputedStyle(element, "::before").content;
-				if (before && before !== "none") values.push(before.replace(/^["']|["']$/g, ""));
-			} catch (e) {}
-			try {
-				const after = window.getComputedStyle(element, "::after").content;
-				if (after && after !== "none") values.push(after.replace(/^["']|["']$/g, ""));
-			} catch (e) {}
-			return values;
-		};
-
-		const parseFromElement = (element) => {
-			if (!element) return null;
-			const candidates = [];
-			if (element.textContent) candidates.push(element.textContent);
-			element.querySelectorAll("span").forEach((span) => {
-				if (span.textContent) candidates.push(span.textContent);
-				const title = span.getAttribute("title");
-				if (title) candidates.push(title);
-			});
-			collectComputedContent(element).forEach((value) => candidates.push(value));
-
-			for (const candidate of candidates) {
-				const parsed = parseCountValue(candidate);
-				if (parsed !== null) return parsed;
-			}
-			return null;
-		};
-
-		const setIfEmpty = (counts, key, value, source) => {
-			if (value === null || value === undefined) return false;
-			if (counts[key] === null) {
-				counts[key] = value;
-				counts.log.push(`${source}: set ${key}=${value}`);
-				return true;
-			}
-			return false;
-		};
-
 		const counts = {
 			followers: null,
 			following: null,
-			log: [],
 		};
 
-		const spans = Array.from(document.querySelectorAll("span[title]"));
-		counts.log.push(`Found span[title] count: ${spans.length}`);
-
-		for (const span of spans) {
-			const titleValue = span.getAttribute("title");
-			counts.log.push(`Title value: ${titleValue}`);
-			const parsed = parseCountValue(titleValue);
-			counts.log.push(`Parsed value: ${parsed}`);
-			if (parsed === null) continue;
-
-			const followersAnchor = span.closest("a[href*='/followers']");
-			const followingAnchor = span.closest("a[href*='/following']");
-			counts.log.push(`Followers anchor: ${!!followersAnchor}, Following anchor: ${!!followingAnchor}`);
-
-      if (followersAnchor) {
-        setIfEmpty(counts, "followers", parsed, "span[title]");
-      }
-      if (followingAnchor) {
-        setIfEmpty(counts, "following", parsed, "span[title]");
-      }
-
-      if (counts.followers === null) {
-        const normalized = (span.textContent || "").toLowerCase();
-        if (FOLLOWERS_TOKENS.some((token) => normalized.includes(token))) {
-          setIfEmpty(counts, "followers", parsed, "span[title]-label-match");
-        }
-      }
-      if (counts.following === null) {
-        const normalized = (span.textContent || "").toLowerCase();
-        if (FOLLOWING_TOKENS.some((token) => normalized.includes(token))) {
-          setIfEmpty(counts, "following", parsed, "span[title]-label-match");
-        }
-      }
-
-			if (counts.followers !== null && counts.following !== null) {
-				break;
-			}
-		}
-
+		// Strategy: Find span[title] elements in header section that contain large numbers
+		// Instagram typically shows follower/following counts as the first two numeric spans with title
 		const header = document.querySelector("header");
-		if (header && (counts.followers === null || counts.following === null)) {
-			const anchors = Array.from(header.querySelectorAll("a[href*='/followers'], a[href*='/following']"));
-			counts.log.push(`Header anchors: ${anchors.length}`);
-			for (const anchor of anchors) {
-				const text = anchor.textContent || "";
-				const normalized = text.toLowerCase();
-				counts.log.push(`Anchor text: ${text}`);
+		if (header) {
+			const titleSpans = Array.from(header.querySelectorAll("span[title]"));
+			const numericValues = [];
 
-				let role = null;
-				if (FOLLOWERS_TOKENS.some((token) => normalized.includes(token))) {
-					role = "followers";
-				} else if (FOLLOWING_TOKENS.some((token) => normalized.includes(token))) {
-					role = "following";
-				}
+			for (const span of titleSpans) {
+				const titleValue = span.getAttribute("title");
+				const parsed = parseCountValue(titleValue);
 
-				if (!role) {
-					continue;
-				}
+				// Only consider values that are likely follower/following counts (> 0)
+				if (parsed !== null && parsed > 0) {
+					// Check if this span is inside an anchor
+					const closestAnchor = span.closest("a");
+					const anchorHref = closestAnchor ? closestAnchor.getAttribute("href") : null;
 
-				let value = parseFromElement(anchor);
-				counts.log.push(`Anchor parsed (${role}): ${value}`);
-				if (value === null) {
-					const container = anchor.closest("li") || anchor.parentElement;
-					value = parseFromElement(container);
-					counts.log.push(`Container parsed (${role}): ${value}`);
-				}
-
-				if (value === null) {
-					const dirSpans = Array.from(anchor.querySelectorAll("span[dir='auto']"));
-					counts.log.push(`dir="auto" spans in anchor: ${dirSpans.length}`);
-					for (const dirSpan of dirSpans) {
-						counts.log.push(`dir="auto" content: ${dirSpan.textContent}`);
-						value = parseFromElement(dirSpan);
-						if (value !== null) break;
-					}
-				}
-
-				if (value === null) {
-					collectComputedContent(anchor).forEach((candidate) => {
-						if (value === null) {
-							value = parseCountValue(candidate);
-							counts.log.push(`Pseudo parsed (${role}): ${value}`);
-						}
+					numericValues.push({
+						value: parsed,
+						anchorHref: anchorHref,
+						span: span,
 					});
 				}
+			}
 
-				if (setIfEmpty(counts, role, value, "header-anchor") && counts.followers !== null && counts.following !== null) {
-					break;
+			// Try to identify by anchor href first
+			for (const item of numericValues) {
+				if (item.anchorHref) {
+					if (item.anchorHref.includes("/followers") && counts.followers === null) {
+						counts.followers = item.value;
+					} else if (item.anchorHref.includes("/following") && counts.following === null) {
+						counts.following = item.value;
+					}
 				}
 			}
-		}
 
-		if (counts.followers === null || counts.following === null) {
-			const dirSpans = Array.from(document.querySelectorAll("span[dir='auto']"));
-			counts.log.push(`Global dir="auto" spans: ${dirSpans.length}`);
-			for (const span of dirSpans) {
-				const text = span.textContent || "";
-				const normalized = text.toLowerCase();
-				if (counts.followers === null && FOLLOWERS_TOKENS.some((token) => normalized.includes(token))) {
-					const value = parseFromElement(span);
-					counts.log.push(`dir auto followers parsed: ${value}`);
-					if (setIfEmpty(counts, "followers", value, "dir-auto") && counts.following !== null) {
-						break;
-					}
-				}
-				if (counts.following === null && FOLLOWING_TOKENS.some((token) => normalized.includes(token))) {
-					const value = parseFromElement(span);
-					counts.log.push(`dir auto following parsed: ${value}`);
-					if (setIfEmpty(counts, "following", value, "dir-auto") && counts.followers !== null) {
-						break;
-					}
+			// If not found by anchor, use the first two large numeric values
+			// Instagram shows them in order: followers, following
+			if (counts.followers === null || counts.following === null) {
+				const largeNumbers = numericValues.filter((item) => item.value >= 10); // Filter small numbers like "24", "95", "1"
+
+				if (largeNumbers.length >= 2) {
+					if (counts.followers === null) counts.followers = largeNumbers[0].value;
+					if (counts.following === null) counts.following = largeNumbers[1].value;
+				} else if (largeNumbers.length === 1) {
+					// Only one large number found, likely followers
+					if (counts.followers === null) counts.followers = largeNumbers[0].value;
 				}
 			}
 		}
@@ -322,15 +158,10 @@ async function processUrl(browser, url) {
 
 		await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT }).catch(() => null);
 		await page.waitForSelector("header", { timeout: WAIT_MAIN_MS }).catch(() => {});
-		await page.waitForSelector("header a", { timeout: WAIT_MAIN_MS }).catch(() => {});
-		await page.waitForSelector("main", { timeout: WAIT_MAIN_MS }).catch(() => {});
-		await page.waitForSelector("span", { timeout: WAIT_MAIN_MS }).catch(() => {});
+		await page.waitForSelector("header span[title]", { timeout: WAIT_MAIN_MS }).catch(() => {});
 		await sleep(POST_NAV_PAUSE_MS);
 
 		const counts = await extractCountsFromPage(page);
-		for (const line of counts.log) {
-			console.log(`[page-log] ${line}`);
-		}
 
 		return {
 			url,
