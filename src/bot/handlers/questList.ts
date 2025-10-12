@@ -3,14 +3,9 @@ import { Composer, InlineKeyboard, Keyboard } from "grammy";
 import type { BotContext } from "../../types/context";
 import type { QuestId } from "../../types/quest";
 import type { QuestStatus } from "../../services/questService";
-import { getExistingSocialUrl, isSocialQuestId } from "../helpers/socialQuests";
+import { getExistingSocialUrl, isSocialQuestId, ensureSocialBaseline } from "../helpers/socialQuests";
 import { TelegramMembershipVerifier } from "../helpers/membership";
-import {
-	BUTTON_BACK_TO_MENU,
-	BUTTON_CHECK_STATUS,
-	BUTTON_QUEST_LIST,
-	buildMainMenuKeyboard,
-} from "../ui/replyKeyboards";
+import { BUTTON_BACK_TO_MENU, BUTTON_CHECK_STATUS, BUTTON_QUEST_LIST, buildMainMenuKeyboard } from "../ui/replyKeyboards";
 import { promptForContact } from "./contact";
 
 const QUEST_BUTTON_PREFIXES = ["✅", "⏳"] as const;
@@ -91,18 +86,25 @@ export class QuestListHandler {
 		const questService = ctx.services.questService;
 		const { definition } = status;
 		const user = await questService.getUser(userId);
-		const existingSocialUrl = isSocialQuestId(definition.id)
-			? getExistingSocialUrl(user, definition.id)
-			: undefined;
+		const existingSocialUrl = isSocialQuestId(definition.id) ? getExistingSocialUrl(user, definition.id) : undefined;
+		if (isSocialQuestId(definition.id) && existingSocialUrl) {
+			try {
+				await ensureSocialBaseline(ctx, userId, definition.id, existingSocialUrl);
+			} catch (error) {
+				console.error("[questList] failed to ensure social baseline", {
+					userId,
+					questId: definition.id,
+					error,
+				});
+			}
+		}
 
 		const lines = [
 			`${status.completed ? "✅" : "⏳"} ${definition.title}`,
 			"",
 			definition.description,
 			"",
-			status.completed
-				? `Status: Completed${status.completedAt ? ` at ${status.completedAt}` : ""}.`
-				: "Status: Pending completion.",
+			status.completed ? `Status: Completed${status.completedAt ? ` at ${status.completedAt}` : ""}.` : "Status: Pending completion.",
 		];
 
 		if (existingSocialUrl) {
@@ -133,15 +135,12 @@ export class QuestListHandler {
 				"Discord verification steps:",
 				inviteLink ? `1. Join the Discord server: ${inviteLink}` : "1. Join the Discord server.",
 				`2. In the verification channel, send: !verify ${userId}`,
-				"3. Wait for the bot to confirm your verification here.",
+				"3. Wait for the bot to confirm your verification here."
 			);
 		}
 
 		if (definition.phase === "stub" && !status.completed) {
-			lines.push(
-				"",
-				"Phase 1 uses trust-based confirmation. Use the button below once you have finished the quest."
-			);
+			lines.push("", "Phase 1 uses trust-based confirmation. Use the button below once you have finished the quest.");
 		}
 
 		lines.push("", 'Tip: tap "🗂 Quest list" in the menu to switch quests.');
@@ -220,9 +219,6 @@ export class QuestListHandler {
 						if (hadLink) {
 							keyboard.row();
 						}
-						keyboard.url("Open profile link", existingSocialUrl);
-						keyboard.row();
-						keyboard.text("Update profile link", `quest:${definition.id}:complete`);
 						keyboard.row();
 						keyboard.text("Verify follow (10s)", `quest:${definition.id}:verify`);
 					} else {

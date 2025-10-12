@@ -3,7 +3,7 @@ import type { BotContext } from "../../types/context";
 import type { QuestService } from "../../services/questService";
 import type { QuestId } from "../../types/quest";
 import type { UserRecord } from "../../types/user";
-import type { SocialPlatform } from "../../services/socialVerification";
+import { captureSocialBaseline, type SocialPlatform, type SocialVerificationBaseline } from "../../services/socialVerification";
 import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
 
 export const SOCIAL_QUEST_IDS = ["x_follow", "instagram_follow", "discord_join"] as const;
@@ -85,6 +85,12 @@ function pendingSocialQuestKey(userId: number): string {
 	return `pending_social_quest:${userId}`;
 }
 
+const SOCIAL_BASELINE_TTL_SECONDS = 900;
+
+function socialBaselineKey(userId: number, questId: SocialQuestId): string {
+	return `social_baseline:${userId}:${questId}`;
+}
+
 async function setPendingSocialQuest(ctx: BotContext, questId: SocialQuestId): Promise<void> {
 	const userId = ctx.from?.id;
 	if (!userId) {
@@ -114,6 +120,64 @@ export async function clearPendingSocialQuest(ctx: BotContext): Promise<void> {
 		return;
 	}
 	await ctx.services.redis.del(pendingSocialQuestKey(userId));
+}
+
+export async function getSocialBaseline(
+	ctx: BotContext,
+	userId: number,
+	questId: SocialQuestId
+): Promise<SocialVerificationBaseline | undefined> {
+	const raw = await ctx.services.redis.get(socialBaselineKey(userId, questId));
+	if (!raw) {
+		return undefined;
+	}
+	try {
+		return JSON.parse(raw) as SocialVerificationBaseline;
+	} catch (error) {
+		console.error("[socialBaseline] failed to parse stored baseline", { userId, questId, error });
+		await ctx.services.redis.del(socialBaselineKey(userId, questId));
+		return undefined;
+	}
+}
+
+export async function clearSocialBaseline(ctx: BotContext, userId: number, questId: SocialQuestId): Promise<void> {
+	await ctx.services.redis.del(socialBaselineKey(userId, questId));
+}
+
+export async function ensureSocialBaseline(
+	ctx: BotContext,
+	userId: number,
+	questId: SocialQuestId,
+	userUrl: string
+): Promise<SocialVerificationBaseline | undefined> {
+	if (questId === "discord_join") {
+		return undefined;
+	}
+
+	const targetUrl = getSocialTargetUrl(ctx.config, questId);
+	if (!targetUrl) {
+		return undefined;
+	}
+
+	const platform = getSocialPlatform(questId);
+	try {
+		const baseline = await captureSocialBaseline({
+			platform,
+			userUrl,
+			targetUrl,
+		});
+		if (baseline) {
+			await ctx.services.redis.set(socialBaselineKey(userId, questId), JSON.stringify(baseline), {
+				EX: SOCIAL_BASELINE_TTL_SECONDS,
+			});
+			return baseline;
+		}
+	} catch (error) {
+		console.error("[socialBaseline] capture failed", { userId, questId, error });
+	}
+
+	const existing = await getSocialBaseline(ctx, userId, questId);
+	return existing;
 }
 
 export async function promptForSocialProfile(ctx: BotContext, questId: SocialQuestId, existing?: string): Promise<void> {
