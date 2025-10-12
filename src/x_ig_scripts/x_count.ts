@@ -1,250 +1,213 @@
-import puppeteer from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import type { Browser, HTTPRequest, Page } from "puppeteer";
+/* eslint-disable no-console */
+import * as fs from "fs";
+import * as path from "path";
+import puppeteer, { HTTPResponse, Page, LaunchOptions, CookieParam } from "puppeteer";
 import which from "which";
 
-puppeteer.use(StealthPlugin());
+type Counts = { followers: number | null; following: number | null };
+type ScrapeOptions = { headless?: boolean };
+type ScrapeResult = {
+	url: string;
+	followers: number | null;
+	following: number | null;
+	meta: { headless: boolean };
+};
 
-const NAV_TIMEOUT = Number(process.env.NAV_TIMEOUT_MS) || 20000;
-const WAIT_MAIN_MS = Number(process.env.WAIT_MAIN_MS) || 7000;
-const POST_NAV_PAUSE_MS = Number(process.env.POST_NAV_PAUSE_MS) || 10000;
-const HEADLESS = (process.env.HEADLESS || "true").toLowerCase() === "true";
-const CHROME_PATH = process.env.CHROME_PATH || null;
-const PROXY = process.env.PROXY || null;
-const USER_AGENT =
-	process.env.USER_AGENT ||
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((res) => setTimeout(res, ms));
-}
+const CHROME_CANDIDATES = [
+	"/usr/bin/google-chrome-stable",
+	"/usr/bin/google-chrome",
+	"/usr/bin/chromium-browser",
+	"/usr/bin/chromium",
+	"google-chrome-stable",
+	"google-chrome",
+	"chromium-browser",
+	"chromium",
+];
 
 function findChromeExecutable(): string | null {
-	if (CHROME_PATH) return CHROME_PATH;
-	const candidates = [
-		"/usr/bin/google-chrome-stable",
-		"/usr/bin/google-chrome",
-		"/usr/bin/chromium-browser",
-		"/usr/bin/chromium",
-		"google-chrome-stable",
-		"google-chrome",
-		"chromium-browser",
-		"chromium",
-	];
-	for (const candidate of candidates) {
+	for (const candidate of CHROME_CANDIDATES) {
 		try {
-			const resolved = which.sync(candidate, { nothrow: true });
+			const resolved = which.sync(candidate, { nothrow: true }) as string | null;
 			if (resolved) return resolved;
-		} catch (error) {
+		} catch {
 			/* ignore */
 		}
 	}
 	return null;
 }
 
-function parseCount(sample: string | null): number | null {
-	if (!sample) return null;
-	const raw = sample.trim();
-	if (!raw) return null;
-
-	const match = raw.match(/([\d]+(?:[.,\s]\d+)*)(\s*(?:[kKmMкКМм]|тис\.?|тыс\.?|млн\.?|мил\.?))?/i);
-	if (!match) return null;
-
-	let numberPart = match[1].replace(/\s+/g, "");
-	const suffix = match[2] ? match[2].trim().toLowerCase() : null;
-
-	if (numberPart.includes(".") && numberPart.includes(",")) {
-		numberPart = numberPart.replace(/,/g, "");
-	} else if (numberPart.includes(",") && !numberPart.includes(".")) {
-		const parts = numberPart.split(",");
-		if (parts[1] && parts[1].length === 3) {
-			numberPart = parts.join("");
-		} else {
-			numberPart = parts.join(".");
-		}
-	} else {
-		numberPart = numberPart.replace(/,/g, "");
+function loadCookiesFromDisk() {
+	const cookiesPath = path.join(__dirname, "x_cookies.json");
+	if (!fs.existsSync(cookiesPath)) return [];
+	try {
+		const raw = JSON.parse(fs.readFileSync(cookiesPath, "utf8")) as unknown;
+		if (!Array.isArray(raw)) return [];
+		return raw.filter((item): item is CookieParam => Boolean(item?.name && item?.value)).map((cookie) => cookie);
+	} catch {
+		return [];
 	}
-
-	let value = Number.parseFloat(numberPart);
-	if (!Number.isFinite(value)) return null;
-
-	if (suffix === "k" || suffix === "к" || suffix === "тис" || suffix === "тис." || suffix === "тыс" || suffix === "тыс.") {
-		value *= 1_000;
-	} else if (suffix === "m" || suffix === "м" || suffix === "млн" || suffix === "млн." || suffix === "мил" || suffix === "мил.") {
-		value *= 1_000_000;
-	}
-
-	return Math.round(value);
 }
 
-async function extractCounts(page: Page): Promise<{ followers: number | null; following: number | null }> {
-	const data = await page.evaluate(() => {
-		const header = document.querySelector("header");
-		if (!header) return null;
-		const spanElements = Array.from(header.querySelectorAll("span"));
-		const spansWithTitle = Array.from(header.querySelectorAll("span[title]"));
-		return {
-			spanTexts: spanElements.map((span) => span.textContent || ""),
-			spansWithTitle: spansWithTitle.map((span) => ({
-				text: span.textContent || "",
-				title: span.getAttribute("title") || "",
-			})),
+function parseCount(value: unknown): number | null {
+	if (typeof value === "number") return Math.round(value);
+	if (value === null || value === undefined) return null;
+	const clean = String(value).replace(/,/g, "").trim();
+	if (!clean) return null;
+	const match = clean.match(/^([\d.]+)\s*([MK])?$/i);
+	if (match) {
+		const base = parseFloat(match[1]);
+		if (!Number.isFinite(base)) return null;
+		const suffix = match[2]?.toUpperCase();
+		const multiplier = suffix === "M" ? 1_000_000 : suffix === "K" ? 1_000 : 1;
+		return Math.round(base * multiplier);
+	}
+	const numeric = Number(clean.replace(/[^\d]/g, ""));
+	return Number.isFinite(numeric) && /\d/.test(clean) ? numeric : null;
+}
+
+function extractCountsFromPayload(payload: unknown): Counts | null {
+	if (!payload || typeof payload !== "object") return null;
+	const queue: unknown[] = [payload];
+	while (queue.length) {
+		const current = queue.shift();
+		if (!current || typeof current !== "object") continue;
+		const legacy = (current as { legacy?: unknown }).legacy;
+		if (legacy && typeof legacy === "object") {
+			const followers = (legacy as { followers_count?: unknown }).followers_count;
+			const following = (legacy as { friends_count?: unknown }).friends_count;
+			const normalizedFollowers = typeof followers === "number" ? followers : null;
+			const normalizedFollowing = typeof following === "number" ? following : null;
+			if (normalizedFollowers !== null || normalizedFollowing !== null) {
+				return { followers: normalizedFollowers, following: normalizedFollowing };
+			}
+		}
+		for (const value of Object.values(current)) {
+			if (value && typeof value === "object") queue.push(value);
+		}
+	}
+	return null;
+}
+
+function waitForGraphQLCounts(page: Page, timeoutMs = 30_000): Promise<Counts> {
+	return new Promise<Counts>((resolve, reject) => {
+		const timer = setTimeout(() => {
+			page.off("response", handler);
+			reject(new Error("Follower/following counts not found (GraphQL timeout)."));
+		}, timeoutMs);
+
+		const handler = async (response: HTTPResponse): Promise<void> => {
+			try {
+				if (!response.ok()) return;
+				const url = response.url();
+				if (!/\/i\/api\/graphql\/.+\/UserByScreenName/.test(url)) return;
+				const headers = response.headers() ?? {};
+				const contentType = headers["content-type"] || headers["Content-Type"] || "";
+				if (!/application\/json/i.test(String(contentType))) return;
+				const payload = await response.json().catch(() => null);
+				if (!payload) return;
+				const counts = extractCountsFromPayload(payload);
+				if (!counts) return;
+				clearTimeout(timer);
+				page.off("response", handler);
+				resolve(counts);
+			} catch {
+				/* ignore individual response errors */
+			}
 		};
+
+		page.on("response", handler);
+	});
+}
+
+async function scrapeTwitterProfile(url: string, opts: ScrapeOptions = {}): Promise<ScrapeResult> {
+	const chromeExec = findChromeExecutable();
+	const headless =
+		typeof opts.headless === "boolean" ? opts.headless : process.env.HEADLESS ? /^(1|true|yes)$/i.test(process.env.HEADLESS) : true;
+
+	const launchOpts: LaunchOptions = {
+		headless,
+		args: [
+			"--no-sandbox",
+			"--disable-setuid-sandbox",
+			"--disable-dev-shm-usage",
+			"--hide-scrollbars",
+			"--window-size=1366,900",
+			"--use-gl=egl",
+		],
+		defaultViewport: null,
+	};
+
+	if (chromeExec) launchOpts.executablePath = chromeExec;
+
+	const browser = await puppeteer.launch(launchOpts);
+	const page = await browser.newPage();
+
+	await page.setUserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+	await page.setViewport({ width: 1366, height: 900, deviceScaleFactor: 1 });
+	await page.evaluateOnNewDocument(() => {
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore - executed in browser context
+		Object.defineProperty(navigator, "webdriver", { get: () => false });
 	});
 
-	if (!data) {
-		return { followers: null, following: null };
-	}
-
-	const spans = data.spanTexts.map((text) => text.trim()).filter(Boolean);
-	const titleEntries = data.spansWithTitle
-		.map((span) => ({ text: span.text.trim(), title: span.title ? span.title.trim() : "" }))
-		.filter((entry) => entry.text || entry.title);
-
-	const findTitleByText = (text: string): number | null => {
-		const key = text.trim().replace(/\s+/g, " ");
-		if (!key) return null;
-		const entry = titleEntries.find((item) => item.text === key);
-		if (!entry) return null;
-		return parseCount(entry.title || entry.text);
-	};
-
-	let followers: number | null = null;
-	let following: number | null = null;
-
-	for (let index = 0; index < spans.length; index++) {
-		const rawText = spans[index];
-		const lower = rawText.toLowerCase();
-
-		if (lower.endsWith("followers")) {
-			const base = rawText.replace(/followers$/i, "").trim();
-			let value = parseCount(base);
-			if (value === null) value = findTitleByText(base);
-			if (value === null && titleEntries.length > 0) {
-				const fallback = titleEntries
-					.map((entry) => parseCount(entry.title || entry.text))
-					.filter((v): v is number => v !== null)
-					.sort((a, b) => b - a)[0];
-				if (fallback !== undefined) value = fallback;
-			}
-			if (value !== null) followers = value;
-		}
-
-		if (lower.endsWith("following")) {
-			const base = rawText.replace(/following$/i, "").trim();
-			let value = parseCount(base);
-			if (value === null) value = findTitleByText(base);
-			if (value !== null) following = value;
-		}
-
-		if (followers !== null && following !== null) {
-			break;
-		}
-	}
-
-	return { followers, following };
-}
-
-async function processUrl(
-	browser: Browser,
-	url: string
-): Promise<{ url: string; followers: number | null; following: number | null; source: string; error?: string }> {
-	const page = await browser.newPage();
-	try {
-		await page.setUserAgent(USER_AGENT);
-		await page.setExtraHTTPHeaders({ "accept-language": "en-US,en;q=0.9" });
-		await page.setViewport({ width: 1280, height: 720 });
-
-		await page.setRequestInterception(true);
-		page.on("request", (req: HTTPRequest) => {
-			try {
-				const type = req.resourceType ? req.resourceType() : "";
-				if (["image", "stylesheet", "font", "media", "other"].includes(type)) {
-					return req.abort();
-				}
-				return req.continue();
-			} catch {
-				try {
-					req.continue();
-				} catch {
-					/* ignore */
-				}
-			}
-		});
-
-		await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT }).catch(() => null);
-		await page.waitForSelector("header", { timeout: WAIT_MAIN_MS }).catch(() => {});
-		await page.waitForSelector("header span", { timeout: WAIT_MAIN_MS }).catch(() => {});
-		await sleep(POST_NAV_PAUSE_MS);
-
-		const counts = await extractCounts(page);
-
-		return {
-			url,
-			followers: counts.followers,
-			following: counts.following,
-			source: "puppeteer",
-		};
-	} catch (error) {
-		return {
-			url,
-			followers: null,
-			following: null,
-			source: "puppeteer",
-			error: error instanceof Error ? error.message : String(error),
-		};
-	} finally {
+	const cookies = loadCookiesFromDisk();
+	if (cookies.length) {
 		try {
-			page.removeAllListeners("request");
-			await page.setRequestInterception(false);
-		} catch {
-			/* ignore */
+			await page.setCookie(...cookies);
+		} catch (error) {
+			console.error("[finder] cookie set error:", (error as Error).message);
 		}
-		await page.close().catch(() => {});
 	}
-}
 
-async function main(urls: string[]): Promise<void> {
-	const chromeExec = findChromeExecutable();
-	const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
-		headless: HEADLESS,
-		args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
-	};
-	if (chromeExec) launchOptions.executablePath = chromeExec;
-	if (PROXY) launchOptions.args?.push(`--proxy-server=${PROXY}`);
+	const countsPromise = waitForGraphQLCounts(page);
 
-	let browser: Browser | null = null;
 	try {
-		browser = await puppeteer.launch(launchOptions);
+		await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
 	} catch (error) {
-		urls.forEach((singleUrl) => {
-			console.log(
-				JSON.stringify({
-					url: singleUrl,
-					followers: null,
-					following: null,
-					source: "puppeteer",
-					error: error instanceof Error ? error.message : String(error),
-				})
-			);
-		});
-		return;
+		await browser.close();
+		throw new Error(`Navigation failed: ${(error as Error).message}`);
 	}
 
-	for (const url of urls) {
-		const result = await processUrl(browser, url);
-		console.log(JSON.stringify(result));
-	}
+	const apiCounts = await countsPromise;
+	const followers = parseCount(apiCounts.followers);
+	const following = parseCount(apiCounts.following);
 
 	await browser.close();
+
+	return {
+		url,
+		followers,
+		following,
+		meta: { headless },
+	};
 }
 
-(async () => {
+async function main(): Promise<void> {
 	const args = process.argv.slice(2);
-	if (args.length === 0) {
-		console.error("Usage: node x_count.ts <url1> <url2> ...");
+	if (!args.length) {
+		console.error('Usage:\n  HEADLESS=true ts-node text_x.ts "https://x.com/thenotcoin" [--json]');
 		process.exit(1);
 	}
-	await main(args);
-})();
+	const asJson = true;
+	const urls = args.filter((arg) => arg !== "--json");
+
+	for (const url of urls) {
+		try {
+			const result = await scrapeTwitterProfile(url);
+			if (asJson) {
+				console.log(JSON.stringify(result));
+			} else {
+				console.log(`URL: ${result.url}`);
+				console.log(`Followers: ${result.followers ?? "unknown"}`);
+				console.log(`Following: ${result.following ?? "unknown"}`);
+				console.log(`Headless=${result.meta.headless}`);
+			}
+		} catch (error) {
+			console.error("Error:", (error as Error).message);
+		}
+	}
+}
+
+if (require.main === module) {
+	void main();
+}
