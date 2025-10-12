@@ -8,12 +8,6 @@ async function bootstrap(): Promise<void> {
 	await application.initialise();
 	const bot = application.getBot();
 
-	try {
-		await bot.api.deleteWebhook({ drop_pending_updates: true });
-	} catch (error) {
-		await application.dispose();
-		throw error;
-	}
 
 	const stop = async () => {
 		try {

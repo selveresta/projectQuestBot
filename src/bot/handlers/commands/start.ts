@@ -35,18 +35,6 @@ export class StartCommandHandler {
 			await this.promptCaptcha(ctx, userId);
 			return;
 		}
-
-		const channelOk = await TelegramMembershipVerifier.ensure(ctx, "channel");
-		if (!channelOk) {
-			return;
-		}
-
-		const chatOk = await TelegramMembershipVerifier.ensure(ctx, "chat");
-		if (!chatOk) {
-			return;
-		}
-
-		await this.sendProgress(ctx, userId);
 	}
 
 	private async promptCaptcha(ctx: BotContext, userId: number): Promise<void> {
@@ -60,21 +48,6 @@ export class StartCommandHandler {
 				challenge.prompt,
 			].join("\n"),
 			{ reply_markup: CaptchaHandler.buildKeyboard(challenge.options) }
-		);
-	}
-
-		private async sendProgress(ctx: BotContext, userId: number): Promise<void> {
-			const questStatus = await ctx.services.questService.buildQuestStatus(userId);
-			const completedCount = questStatus.filter((item) => item.completed).length;
-			const total = questStatus.length;
-
-		await ctx.reply(
-			[
-				"🎉 Welcome back!",
-				`You have completed ${completedCount}/${total} quests.`,
-				"Use the menu below to continue with your quests.",
-			].join("\n"),
-			{ reply_markup: buildMainMenuKeyboard(ctx.config) }
 		);
 	}
 }

@@ -1,7 +1,6 @@
 import { Composer, InlineKeyboard } from "grammy";
 
 import type { BotContext } from "../../types/context";
-import { TelegramMembershipVerifier } from "../helpers/membership";
 import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
 
 export class CaptchaHandler {
@@ -50,21 +49,9 @@ export class CaptchaHandler {
 		}
 
 		await repo.markCaptchaPassed(userId);
-		await ctx.answerCallbackQuery({ text: "Verified!", show_alert: true });
 		await ctx.editMessageText("✅ You passed the human check! Let's complete the quests.");
-
-		const channelOk = await TelegramMembershipVerifier.ensure(ctx, "channel");
-		if (!channelOk) {
-			return;
-		}
-
-		const chatOk = await TelegramMembershipVerifier.ensure(ctx, "chat");
-		if (!chatOk) {
-			return;
-		}
-
-			await this.showMainMenu(ctx);
-		}
+		await this.showMainMenu(ctx);
+	}
 
 	private async regenerateChallenge(ctx: BotContext, userId: number): Promise<void> {
 		const captcha = ctx.services.captchaService;
