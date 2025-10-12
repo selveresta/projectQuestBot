@@ -11,6 +11,7 @@ import {
 	BUTTON_QUEST_LIST,
 	buildMainMenuKeyboard,
 } from "../ui/replyKeyboards";
+import { promptForContact } from "./contact";
 
 const QUEST_BUTTON_PREFIXES = ["✅", "⏳"] as const;
 
@@ -115,7 +116,7 @@ export class QuestListHandler {
 		}
 
 		if (definition.id === "email_submit") {
-			lines.push("", "Use /email to submit or update your contact address.");
+			lines.push("", "Reply to the prompt below with your email to submit or update it.");
 		}
 
 		if (definition.id === "wallet_submit") {
@@ -150,6 +151,11 @@ export class QuestListHandler {
 		await ctx.reply(lines.join("\n"), {
 			reply_markup: keyboard,
 		});
+
+		if (definition.id === "email_submit") {
+			const existingEmail = user.email ?? status.metadata ?? undefined;
+			await promptForContact(ctx, "email", existingEmail);
+		}
 	}
 
 	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
