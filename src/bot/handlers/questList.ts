@@ -4,6 +4,7 @@ import type { BotContext } from "../../types/context";
 import type { QuestId } from "../../types/quest";
 import type { QuestStatus } from "../../services/questService";
 import { getExistingSocialUrl, isSocialQuestId } from "../helpers/socialQuests";
+import { TelegramMembershipVerifier } from "../helpers/membership";
 import {
 	BUTTON_BACK_TO_MENU,
 	BUTTON_CHECK_STATUS,
@@ -15,10 +16,10 @@ const QUEST_BUTTON_PREFIXES = ["✅", "⏳"] as const;
 
 export class QuestListHandler {
 	register(composer: Composer<BotContext>): void {
-		composer.command("quests", this.handleOpenList.bind(this));
 		composer.hears(BUTTON_QUEST_LIST, this.handleOpenList.bind(this));
 		composer.hears(BUTTON_BACK_TO_MENU, this.handleBackToMenu.bind(this));
 		composer.on("message:text", this.handleQuestSelection.bind(this));
+		composer.callbackQuery(/^quest-check:(.+)$/, this.handleCheckRequest.bind(this));
 	}
 
 	private async handleOpenList(ctx: BotContext): Promise<void> {
@@ -173,29 +174,64 @@ export class QuestListHandler {
 		const keyboard = new InlineKeyboard();
 		const socialQuest = isSocialQuestId(definition.id);
 
-		if (definition.url) {
-			keyboard.url(definition.cta ?? "Open link", definition.url);
-		}
-
-		if (socialQuest) {
-			if (existingSocialUrl) {
-				if (definition.url) {
-					keyboard.row();
-				}
-				keyboard.url("Open profile link", existingSocialUrl);
-				keyboard.row();
-				keyboard.text("Update profile link", `quest:${definition.id}:complete`);
-			} else {
-				if (definition.url) {
-					keyboard.row();
-				}
-				keyboard.text("Submit profile link", `quest:${definition.id}:complete`);
-			}
-		} else if (!status.completed && definition.phase === "stub") {
+		const addOfficialLink = (): boolean => {
 			if (definition.url) {
-				keyboard.row();
+				keyboard.url(definition.cta ?? "Open link", definition.url);
+				return true;
 			}
-			keyboard.text("Mark as complete", `quest:${definition.id}:complete`);
+			return false;
+		};
+
+		switch (definition.id) {
+			case "telegram_channel": {
+				const hasButton = addOfficialLink();
+				if (hasButton) {
+					keyboard.row();
+				}
+				keyboard.text("Check channel membership", "quest-check:telegram_channel");
+				break;
+			}
+			case "telegram_chat": {
+				const hasButton = addOfficialLink();
+				if (hasButton) {
+					keyboard.row();
+				}
+				keyboard.text("Check chat membership", "quest-check:telegram_chat");
+				break;
+			}
+			case "discord_join": {
+				const hasButton = addOfficialLink();
+				if (hasButton) {
+					keyboard.row();
+				}
+				keyboard.text("Check Discord status", "quest-check:discord_join");
+				break;
+			}
+			default: {
+				const hadLink = addOfficialLink();
+				if (socialQuest) {
+					if (existingSocialUrl) {
+						if (hadLink) {
+							keyboard.row();
+						}
+						keyboard.url("Open profile link", existingSocialUrl);
+						keyboard.row();
+						keyboard.text("Update profile link", `quest:${definition.id}:complete`);
+						keyboard.row();
+						keyboard.text("Verify follow (10s)", `quest:${definition.id}:verify`);
+					} else {
+						if (hadLink) {
+							keyboard.row();
+						}
+						keyboard.text("Submit profile link", `quest:${definition.id}:complete`);
+					}
+				} else if (!status.completed && definition.phase === "stub") {
+					if (hadLink) {
+						keyboard.row();
+					}
+					keyboard.text("Mark as complete", `quest:${definition.id}:complete`);
+				}
+			}
 		}
 
 		return keyboard;
@@ -218,5 +254,37 @@ export class QuestListHandler {
 			return undefined;
 		}
 		return text.replace(/^[^\s]+\s+/, "").trim() || undefined;
+	}
+
+	private async handleCheckRequest(ctx: BotContext): Promise<void> {
+		const questId = ctx.match?.[1] as QuestId | undefined;
+		if (!questId) {
+			await ctx.answerCallbackQuery({ text: "Unknown quest." });
+			return;
+		}
+
+		const userId = ctx.from?.id;
+		if (!userId) {
+			await ctx.answerCallbackQuery({ text: "Telegram user required.", show_alert: true });
+			return;
+		}
+
+		if (questId === "telegram_channel" || questId === "telegram_chat") {
+			const target = questId === "telegram_channel" ? "channel" : "chat";
+			const ok = await TelegramMembershipVerifier.ensure(ctx, target);
+			await ctx.answerCallbackQuery({ text: ok ? "Membership checked." : "See messages for details." });
+			return;
+		}
+
+		if (questId === "discord_join") {
+			const completed = await ctx.services.questService.hasCompletedQuest(userId, "discord_join");
+			await ctx.answerCallbackQuery({
+				text: completed ? "Discord verification already recorded." : "Still waiting for Discord verification.",
+				show_alert: !completed,
+			});
+			return;
+		}
+
+		await ctx.answerCallbackQuery({ text: "Unsupported quest." });
 	}
 }

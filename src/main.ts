@@ -7,8 +7,6 @@ async function bootstrap(): Promise<void> {
 	const application = new BotApplication(config);
 	await application.initialise();
 	const bot = application.getBot();
-
-
 	const stop = async () => {
 		try {
 			bot.stop();
@@ -20,18 +18,20 @@ async function bootstrap(): Promise<void> {
 	process.once("SIGINT", stop);
 	process.once("SIGTERM", stop);
 
-	bot.start({
-		drop_pending_updates: true,
-		allowed_updates: ["message", "callback_query"],
-	}).catch(async (error) => {
-		console.error("Failed to start bot", error);
-		await application.dispose();
-	});
-
-	startDiscordVerifier().catch((error) => {
-		console.error("[discord] fatal error", error);
-		process.exitCode = 1;
-	});
+	startDiscordVerifier()
+		.catch((error) => {
+			console.error("[discord] fatal error", error);
+			process.exitCode = 1;
+		})
+		.finally(() => {
+			bot.start({
+				drop_pending_updates: true,
+				allowed_updates: ["message", "callback_query"],
+			}).catch(async (error) => {
+				console.error("Failed to start bot", error);
+				await application.dispose();
+			});
+		});
 }
 
 bootstrap().catch((error) => {

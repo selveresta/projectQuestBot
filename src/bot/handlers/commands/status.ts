@@ -10,7 +10,6 @@ export class StatusCommandHandler {
 
 	register(composer: Composer<BotContext>): void {
 		const handler = this.handleStatus.bind(this);
-		composer.command("status", handler);
 		composer.hears(BUTTON_CHECK_STATUS, handler);
 	}
 
@@ -35,15 +34,7 @@ export class StatusCommandHandler {
 
 		const questLines = quests.map((item) => {
 			const status = item.completed ? "✅" : "⏳";
-			const hints: string[] = [];
-			if (item.definition.phase === "stub" && !item.completed) {
-				hints.push("verification will arrive in Phase 2");
-			}
-			if (!item.completed && item.definition.url) {
-				hints.push(item.definition.url);
-			}
-			const hintText = hints.length ? ` — ${hints.join(" | ")}` : "";
-			return `${status} ${item.definition.title}${hintText}`;
+			return `${status} ${item.definition.title}`;
 		});
 
 		const metaLines = [
@@ -66,20 +57,7 @@ export class StatusCommandHandler {
 				"",
 				"Complete every quest to become eligible for the prize pool.",
 			].join("\n"),
-			{ reply_markup: buildMainMenuKeyboard(ctx.config) }
+			{ reply_markup: buildMainMenuKeyboard(ctx.config), link_preview_options: { is_disabled: true } }
 		);
-
-		const definitions = questService.getDefinitions();
-		const pendingStubQuestIds: QuestId[] = quests
-			.filter((item) => item.definition.phase === "stub" && !item.completed)
-			.map((item) => item.definition.id as QuestId);
-
-		const keyboard = this.stubQuestHandler.buildKeyboard(definitions, pendingStubQuestIds);
-		if (keyboard) {
-			await ctx.reply(
-				"Phase 1 uses trust-based confirmations. Tap the quests you've completed so we can record them:",
-				{ reply_markup: keyboard }
-			);
-		}
 	}
 }

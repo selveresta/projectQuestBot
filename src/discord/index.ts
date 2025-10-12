@@ -45,7 +45,7 @@ export class DiscordVerifier {
 	}
 
 	private registerEventHandlers(): void {
-		this.client.once("ready", () => {
+		this.client.once("clientReady", () => {
 			console.log(`[discord] Logged in as ${this.client.user?.tag ?? "unknown user"}`);
 		});
 
@@ -54,9 +54,15 @@ export class DiscordVerifier {
 				return;
 			}
 			try {
-				await this.handleMessage(message.content.trim(), message.guildId ?? "", message.channelId, message.author.id, async (reply) => {
-					await message.reply(reply);
-				});
+				await this.handleMessage(
+					message.content.trim(),
+					message.guildId ?? "",
+					message.channelId,
+					message.author.id,
+					async (reply) => {
+						await message.reply(reply);
+					}
+				);
 			} catch (error) {
 				console.error("[discord] message handler failed", error);
 			}
@@ -133,4 +139,3 @@ export async function startDiscordVerifier(customConfig: AppConfig = appConfig):
 	const verifier = new DiscordVerifier(customConfig);
 	await verifier.start();
 }
-

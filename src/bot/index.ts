@@ -6,7 +6,7 @@ import { CaptchaService } from "../services/captchaService";
 import { QuestService } from "../services/questService";
 import { UserRepository } from "../services/userRepository";
 import type { BotContext } from "../types/context";
-import { BotHandlerRegistry } from "./handlers";
+import { createBotHandlers } from "./handlers";
 import { acquireRedisClient, releaseRedisClient, type RedisClient } from "../infra/redis";
 
 export class BotApplication {
@@ -38,8 +38,7 @@ export class BotApplication {
 			await next();
 		});
 
-		const handlerRegistry = new BotHandlerRegistry();
-		this.bot.use(handlerRegistry.build());
+		this.bot.use(createBotHandlers());
 	}
 
 	getBot(): Bot<BotContext> {

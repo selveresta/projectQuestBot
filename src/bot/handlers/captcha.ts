@@ -1,7 +1,7 @@
 import { Composer, InlineKeyboard } from "grammy";
 
 import type { BotContext } from "../../types/context";
-import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
+import { buildMainMenuKeyboard, buildMainMenuMessage } from "../ui/replyKeyboards";
 
 export class CaptchaHandler {
 	static buildKeyboard(options: string[]): InlineKeyboard {
@@ -84,12 +84,6 @@ export class CaptchaHandler {
 	}
 
 	private async showMainMenu(ctx: BotContext): Promise<void> {
-		await ctx.reply(
-			[
-				"You're all set! Use the menu below to continue with the quests.",
-				"Tap a button at any time to navigate.",
-			].join("\n"),
-			{ reply_markup: buildMainMenuKeyboard(ctx.config) }
-		);
+		await ctx.reply(buildMainMenuMessage(), { reply_markup: buildMainMenuKeyboard(ctx.config) });
 	}
 }

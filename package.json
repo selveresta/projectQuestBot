@@ -4,8 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
-    "build": "rimraf ./dist && tsc --project tsconfig.json --outDir dist && mkdir -p dist/x_ig_scripts && if [ -f src/x_ig_scripts/inst_cookies.json ]; then cp src/x_ig_scripts/inst_cookies.json dist/x_ig_scripts/inst_cookies.json; fi && if [ -f src/x_ig_scripts/x_cookies.json ]; then cp src/x_ig_scripts/x_cookies.json dist/x_ig_scripts/x_cookies.json; fi",
+    "dev": "ts-node src/main.ts",
+    "build": "rimraf ./dist && tsc --project tsconfig.json --outDir dist && cp src/x_ig_scripts/*.json dist/x_ig_scripts/",
     "start": "node dist/main.js"
   },
   "dependencies": {
@@ -24,7 +24,6 @@
     "@types/node": "^24.7.0",
     "@types/which": "^3.0.4",
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
   }
 }

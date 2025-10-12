@@ -60,6 +60,10 @@ export class QuestService {
 		return this.userRepository.updateContact(userId, contact);
 	}
 
+	async saveQuestMetadata(userId: number, questId: QuestId, metadata: string): Promise<UserRecord> {
+		return this.userRepository.setQuestMetadata(userId, questId, metadata);
+	}
+
 	async buildQuestStatus(userId: number): Promise<QuestStatus[]> {
 		const user = await this.userRepository.getOrCreate(userId);
 		return this.definitions.map((definition) => {

@@ -157,6 +157,16 @@ export class UserRepository {
 		return user;
 	}
 
+	async setQuestMetadata(userId: number, questId: QuestId, metadata: string): Promise<UserRecord> {
+		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
+		const questProgress: QuestProgressEntry = user.quests[questId] ?? ({ completed: false } as QuestProgressEntry);
+		questProgress.metadata = metadata;
+		user.quests[questId] = questProgress;
+		user.updatedAt = now();
+		await this.save(user);
+		return user;
+	}
+
 	async updateContact(
 		userId: number,
 		contact: Partial<

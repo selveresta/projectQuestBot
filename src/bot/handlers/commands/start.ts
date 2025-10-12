@@ -1,8 +1,7 @@
 import { Composer } from "grammy";
 
 import type { BotContext } from "../../../types/context";
-import { TelegramMembershipVerifier } from "../../helpers/membership";
-import { buildMainMenuKeyboard } from "../../ui/replyKeyboards";
+import { buildMainMenuKeyboard, buildMainMenuMessage } from "../../ui/replyKeyboards";
 import { CaptchaHandler } from "../captcha";
 
 export class StartCommandHandler {
@@ -17,24 +16,18 @@ export class StartCommandHandler {
 		}
 
 		const userId = ctx.from.id;
-		const repo = ctx.services.userRepository;
-
-		await repo.getOrCreate(userId, {
+		const user = await ctx.services.userRepository.getOrCreate(userId, {
 			username: ctx.from.username,
 			firstName: ctx.from.first_name,
 			lastName: ctx.from.last_name,
 		});
 
-		const user = await repo.get(userId);
-		if (!user) {
-			await ctx.reply("Something went wrong while loading your profile.");
-			return;
-		}
-
 		if (!user.captchaPassed) {
 			await this.promptCaptcha(ctx, userId);
 			return;
 		}
+
+		await this.showMainMenu(ctx);
 	}
 
 	private async promptCaptcha(ctx: BotContext, userId: number): Promise<void> {
@@ -49,5 +42,9 @@ export class StartCommandHandler {
 			].join("\n"),
 			{ reply_markup: CaptchaHandler.buildKeyboard(challenge.options) }
 		);
+	}
+
+	private async showMainMenu(ctx: BotContext): Promise<void> {
+		await ctx.reply(buildMainMenuMessage(), { reply_markup: buildMainMenuKeyboard(ctx.config) });
 	}
 }
