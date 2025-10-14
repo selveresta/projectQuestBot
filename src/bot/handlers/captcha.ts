@@ -68,9 +68,10 @@ export class CaptchaHandler {
 		const captcha = ctx.services.captchaService;
 		const user = await repo.incrementCaptchaAttempts(userId);
 		const attemptsLeft = ctx.config.captchaRetries - user.captchaAttempts;
-		const message = attemptsLeft > 0
-			? `Nope, that's not it. Attempts left: ${attemptsLeft}`
-			: "Too many failed attempts. Generating a new captcha.";
+		const message =
+			attemptsLeft > 0
+				? `Nope, that's not it. Attempts left: ${attemptsLeft}`
+				: "Too many failed attempts. Generating a new captcha.";
 
 		await ctx.answerCallbackQuery({ text: message, show_alert: true });
 
@@ -84,6 +85,6 @@ export class CaptchaHandler {
 	}
 
 	private async showMainMenu(ctx: BotContext): Promise<void> {
-		await ctx.reply(buildMainMenuMessage(), { reply_markup: buildMainMenuKeyboard(ctx.config) });
+		await ctx.reply(buildMainMenuMessage(), { reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId) });
 	}
 }

@@ -16,6 +16,7 @@ import {
 	getSocialTargetUrl,
 	ensureSocialBaseline,
 	getSocialBaseline,
+	isBaselinePending,
 	clearSocialBaseline,
 	clearPendingSocialQuest,
 } from "../helpers/socialQuests";
@@ -147,6 +148,14 @@ export class StubQuestHandler {
 
 		const baseline = await getSocialBaseline(ctx, userId, questId);
 		if (!baseline) {
+			if (await isBaselinePending(ctx, userId, questId)) {
+				await ctx.answerCallbackQuery({
+					text: "Preparing baseline. Please wait a moment and try verify again.",
+					show_alert: true,
+				});
+				return;
+			}
+
 			const createdBaseline = await ensureSocialBaseline(ctx, userId, questId, userProfileUrl);
 			if (!createdBaseline) {
 				await ctx.answerCallbackQuery({

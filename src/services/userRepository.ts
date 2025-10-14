@@ -8,10 +8,7 @@ function now(): string {
 }
 
 export class UserRepository {
-	constructor(
-		private readonly redis: RedisClient,
-		private readonly questIds: QuestId[]
-	) {}
+	constructor(private readonly redis: RedisClient, private readonly questIds: QuestId[]) {}
 
 	private createDefaultQuestProgress(): QuestProgress {
 		return this.questIds.reduce((accumulator, questId) => {
@@ -169,9 +166,7 @@ export class UserRepository {
 
 	async updateContact(
 		userId: number,
-		contact: Partial<
-			Pick<UserRecord, "email" | "wallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">
-		>
+		contact: Partial<Pick<UserRecord, "email" | "wallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">>
 	): Promise<UserRecord> {
 		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
 		const updated: UserRecord = {
@@ -184,38 +179,42 @@ export class UserRepository {
 	}
 
 	async listAllUsers(): Promise<UserRecord[]> {
-		const users: UserRecord[] = [];
-		for await (const rawKey of this.redis.scanIterator({
-			MATCH: "user:*",
-			COUNT: 100,
-		})) {
-			const key = String(rawKey);
-			if (!key) {
-				continue;
-			}
+		const result: UserRecord[] = [];
 
-			const payload = await this.redis.get(key);
-			if (!payload) {
-				continue;
-			}
-			try {
-				const user = JSON.parse(payload) as UserRecord;
-				users.push(user);
-			} catch (error) {
-				console.error("[userRepository] failed to parse user during scan", {
-					key: rawKey,
-					error,
-				});
+		// 1) Collect all user:* keys (scanIterator may yield a string or an array)
+		const keys: string[] = [];
+		for await (const item of this.redis.scanIterator({ MATCH: "user:*", COUNT: 500 })) {
+			if (Array.isArray(item)) {
+				for (const k of item) if (k) keys.push(String(k));
+			} else if (item) {
+				keys.push(String(item));
 			}
 		}
-		return users;
+		if (keys.length === 0) return result;
+
+		// 2) Bulk fetch values. ioredis.mget(...) -> (string | null)[]
+		const values = (await this.redis.mGet(keys)) as (string | null)[];
+
+		// 3) Parse JSON and normalize quest coverage
+		for (let i = 0; i < values.length; i += 1) {
+			const payload = values[i];
+			if (!payload) continue;
+			try {
+				const user = JSON.parse(payload) as UserRecord;
+				const normalized = this.ensureQuestCoverage(user);
+				result.push(normalized);
+			} catch (error) {
+				console.error("[userRepository] failed to parse user", { key: keys[i], error });
+			}
+		}
+
+		return result;
 	}
 
 	async countEligibleUsers(requiredQuestIds: QuestId[]): Promise<number> {
 		let count = 0;
 		for await (const rawKey of this.redis.scanIterator({
 			MATCH: "user:*",
-			COUNT: 200,
 		})) {
 			const key = String(rawKey);
 			if (!key) {

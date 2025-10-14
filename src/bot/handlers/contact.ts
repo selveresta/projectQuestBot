@@ -126,7 +126,7 @@ export class ContactHandler {
 		await ctx.services.questService.completeQuest(userId, "email_submit", email);
 		await clearPendingContact(ctx, "email");
 		await ctx.reply("✅ Email saved. You can update it at any time via the menu.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config),
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
 		});
 	}
 
@@ -142,7 +142,7 @@ export class ContactHandler {
 		await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
 		await clearPendingContact(ctx, "wallet");
 		await ctx.reply("✅ Wallet saved. Run /status to make sure everything looks good.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config),
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
 		});
 	}
 

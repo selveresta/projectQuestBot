@@ -45,6 +45,6 @@ export class StartCommandHandler {
 	}
 
 	private async showMainMenu(ctx: BotContext): Promise<void> {
-		await ctx.reply(buildMainMenuMessage(), { reply_markup: buildMainMenuKeyboard(ctx.config) });
+		await ctx.reply(buildMainMenuMessage(), { reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId) });
 	}
 }

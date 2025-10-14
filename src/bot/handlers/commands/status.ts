@@ -57,7 +57,7 @@ export class StatusCommandHandler {
 				"",
 				"Complete every quest to become eligible for the prize pool.",
 			].join("\n"),
-			{ reply_markup: buildMainMenuKeyboard(ctx.config), link_preview_options: { is_disabled: true } }
+			{ reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId), link_preview_options: { is_disabled: true } }
 		);
 	}
 }

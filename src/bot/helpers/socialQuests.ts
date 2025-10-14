@@ -86,9 +86,14 @@ function pendingSocialQuestKey(userId: number): string {
 }
 
 const SOCIAL_BASELINE_TTL_SECONDS = 900;
+const SOCIAL_BASELINE_PENDING_TTL_SECONDS = 120;
 
 function socialBaselineKey(userId: number, questId: SocialQuestId): string {
 	return `social_baseline:${userId}:${questId}`;
+}
+
+function socialBaselinePendingKey(userId: number, questId: SocialQuestId): string {
+	return `social_baseline_pending:${userId}:${questId}`;
 }
 
 async function setPendingSocialQuest(ctx: BotContext, questId: SocialQuestId): Promise<void> {
@@ -142,6 +147,22 @@ export async function getSocialBaseline(
 
 export async function clearSocialBaseline(ctx: BotContext, userId: number, questId: SocialQuestId): Promise<void> {
 	await ctx.services.redis.del(socialBaselineKey(userId, questId));
+	await clearBaselinePending(ctx, userId, questId);
+}
+
+async function markBaselinePending(ctx: BotContext, userId: number, questId: SocialQuestId): Promise<void> {
+	await ctx.services.redis.set(socialBaselinePendingKey(userId, questId), "1", {
+		EX: SOCIAL_BASELINE_PENDING_TTL_SECONDS,
+	});
+}
+
+export async function clearBaselinePending(ctx: BotContext, userId: number, questId: SocialQuestId): Promise<void> {
+	await ctx.services.redis.del(socialBaselinePendingKey(userId, questId));
+}
+
+export async function isBaselinePending(ctx: BotContext, userId: number, questId: SocialQuestId): Promise<boolean> {
+	const value = await ctx.services.redis.get(socialBaselinePendingKey(userId, questId));
+	return value === "1";
 }
 
 export async function ensureSocialBaseline(
@@ -154,12 +175,18 @@ export async function ensureSocialBaseline(
 		return undefined;
 	}
 
+	const existing = await getSocialBaseline(ctx, userId, questId);
+	if (existing) {
+		return existing;
+	}
+
 	const targetUrl = getSocialTargetUrl(ctx.config, questId);
 	if (!targetUrl) {
 		return undefined;
 	}
 
 	const platform = getSocialPlatform(questId);
+	await markBaselinePending(ctx, userId, questId);
 	try {
 		const baseline = await captureSocialBaseline({
 			platform,
@@ -174,10 +201,11 @@ export async function ensureSocialBaseline(
 		}
 	} catch (error) {
 		console.error("[socialBaseline] capture failed", { userId, questId, error });
+	} finally {
+		await clearBaselinePending(ctx, userId, questId);
 	}
 
-	const existing = await getSocialBaseline(ctx, userId, questId);
-	return existing;
+	return getSocialBaseline(ctx, userId, questId);
 }
 
 export async function promptForSocialProfile(ctx: BotContext, questId: SocialQuestId, existing?: string): Promise<void> {
@@ -190,7 +218,7 @@ export async function promptForSocialProfile(ctx: BotContext, questId: SocialQue
 
 	await setPendingSocialQuest(ctx, questId);
 	await ctx.reply(lines.join("\n"), {
-		reply_markup: buildMainMenuKeyboard(ctx.config),
+		reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
 		link_preview_options: { is_disabled: true },
 	});
 }

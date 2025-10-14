@@ -29,7 +29,7 @@ export class QuestListHandler {
 
 	private async handleBackToMenu(ctx: BotContext): Promise<void> {
 		await ctx.reply("Back to the main menu.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config),
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
 		});
 	}
 
@@ -88,15 +88,13 @@ export class QuestListHandler {
 		const user = await questService.getUser(userId);
 		const existingSocialUrl = isSocialQuestId(definition.id) ? getExistingSocialUrl(user, definition.id) : undefined;
 		if (isSocialQuestId(definition.id) && existingSocialUrl) {
-			try {
-				await ensureSocialBaseline(ctx, userId, definition.id, existingSocialUrl);
-			} catch (error) {
+			void ensureSocialBaseline(ctx, userId, definition.id, existingSocialUrl).catch((error) => {
 				console.error("[questList] failed to ensure social baseline", {
 					userId,
 					questId: definition.id,
 					error,
 				});
-			}
+			});
 		}
 
 		const lines = [
@@ -121,9 +119,9 @@ export class QuestListHandler {
 			lines.push("", "Reply to the prompt below with your email to submit or update it.");
 		}
 
-		if (definition.id === "wallet_submit") {
-			lines.push("", "Use /wallet to submit or update your EVM wallet.");
-		}
+		// if (definition.id === "wallet_submit") {
+		// 	lines.push("", "Use /wallet to submit or update your EVM wallet.");
+		// }
 
 		if (definition.id === "discord_join") {
 			const inviteLink = ctx.config.links.discordInviteUrl;
@@ -134,7 +132,7 @@ export class QuestListHandler {
 				"",
 				"Discord verification steps:",
 				inviteLink ? `1. Join the Discord server: ${inviteLink}` : "1. Join the Discord server.",
-				`2. In the verification channel, send: !verify ${userId}`,
+				`2. In the verification channel, send: \`!verify ${userId}\``,
 				"3. Wait for the bot to confirm your verification here."
 			);
 		}
@@ -149,11 +147,17 @@ export class QuestListHandler {
 
 		await ctx.reply(lines.join("\n"), {
 			reply_markup: keyboard,
+			parse_mode: definition.id === "discord_join" ? "Markdown" : "HTML",
+			link_preview_options: { is_disabled: true },
 		});
 
 		if (definition.id === "email_submit") {
 			const existingEmail = user.email ?? status.metadata ?? undefined;
 			await promptForContact(ctx, "email", existingEmail);
+		}
+		if (definition.id === "wallet_submit") {
+			const existingEmail = user.wallet ?? status.metadata ?? undefined;
+			await promptForContact(ctx, "wallet", existingEmail);
 		}
 	}
 
@@ -220,7 +224,7 @@ export class QuestListHandler {
 							keyboard.row();
 						}
 						keyboard.row();
-						keyboard.text("Verify follow (10s)", `quest:${definition.id}:verify`);
+						keyboard.text("✅ Verify", `quest:${definition.id}:verify`);
 					} else {
 						if (hadLink) {
 							keyboard.row();

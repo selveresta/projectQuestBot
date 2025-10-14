@@ -7,8 +7,6 @@ export interface TelegramConfig {
 	channelUrl: string;
 	chatId: string;
 	chatUrl: string;
-	tradyBotUsername: string;
-	tradyBotUrl: string;
 }
 
 export interface LinksConfig {
@@ -49,15 +47,11 @@ export class AppConfiguration implements AppConfig {
 		this.adminIds = this.parseAdminIds(env.ADMIN_IDS);
 		this.captchaRetries = this.parseCaptchaRetries(env.CAPTCHA_RETRIES);
 
-		const tradyBotUsername = (env.TELEGRAM_TRADY_BOT ?? "@TradyCryptoBot").replace(/^@/, "");
-
 		this.telegram = {
 			channelId: env.TELEGRAM_CHANNEL_ID ?? "",
 			channelUrl: env.TELEGRAM_CHANNEL_URL ?? "",
 			chatId: env.TELEGRAM_CHAT_ID ?? "",
 			chatUrl: env.TELEGRAM_CHAT_URL ?? "",
-			tradyBotUsername,
-			tradyBotUrl: env.TELEGRAM_TRADY_BOT_URL ?? `https://t.me/${tradyBotUsername}`,
 		};
 
 		this.links = {
