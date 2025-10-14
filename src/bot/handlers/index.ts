@@ -38,7 +38,7 @@ export class BotHandlerRegistry {
 	private async handleHelpCommand(ctx: BotContext): Promise<void> {
 		await ctx.reply(
 			[
-				"Project Quest Bot",
+				"Trady Quest Bot",
 				"",
 				"Commands:",
 				"- /start — begin the giveaway flow",

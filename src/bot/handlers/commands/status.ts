@@ -10,7 +10,9 @@ export class StatusCommandHandler {
 
 	register(composer: Composer<BotContext>): void {
 		const handler = this.handleStatus.bind(this);
+		const handlerAbout = this.handleAbout.bind(this);
 		composer.hears(BUTTON_CHECK_STATUS, handler);
+		composer.hears(BUTTON_CHECK_STATUS, handlerAbout);
 	}
 
 	private async handleStatus(ctx: BotContext): Promise<void> {
@@ -59,5 +61,21 @@ export class StatusCommandHandler {
 			].join("\n"),
 			{ reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId), link_preview_options: { is_disabled: true } }
 		);
+	}
+
+	private async handleAbout(ctx: BotContext): Promise<void> {
+		if (!ctx.from) {
+			await ctx.reply("I need a Telegram user to check status.");
+			return;
+		}
+
+		await ctx.reply(`
+Trady is a next-gen decentralized trading platform built for pro-level DeFi traders.
+It combines deep analytics, cross-chain execution, and full self-custody — giving you CEX-grade speed with true DeFi ownership.
+
+🎁 Giveaway:
+Join now for a chance to win up to $1,000 and exclusive invite codes for Trady Early Access.
+Complete all quests to qualify and become one of the first to explore the Trady platform.
+			`);
 	}
 }

@@ -31,7 +31,7 @@ const SOCIAL_QUESTS: Record<SocialQuestId, SocialQuestConfig> = {
 		sampleUrl: "https://x.com/yourhandle",
 		allowedDomains: ["x.com", "twitter.com"],
 		invalidMessage: "Please send the link to your X profile (for example: https://x.com/yourhandle).",
-		successMessage: "✅ X profile saved. Use the verify button when you're ready.",
+		successMessage: "✅ X profile saved.",
 	},
 	instagram_follow: {
 		field: "instagramProfileUrl",
@@ -39,7 +39,7 @@ const SOCIAL_QUESTS: Record<SocialQuestId, SocialQuestConfig> = {
 		sampleUrl: "https://instagram.com/yourhandle",
 		allowedDomains: ["instagram.com"],
 		invalidMessage: "Please send the link to your Instagram profile (for example: https://instagram.com/yourhandle).",
-		successMessage: "✅ Instagram profile saved. Use the verify button when you're ready.",
+		successMessage: "✅ Instagram profile saved.",
 	},
 	discord_join: {
 		field: "discordUserId",
@@ -47,7 +47,7 @@ const SOCIAL_QUESTS: Record<SocialQuestId, SocialQuestConfig> = {
 		sampleUrl: "272413599446597632",
 		allowedDomains: ["discord.com"],
 		invalidMessage: "Please send the ID to your Discord user (for example: 272413599446597632).",
-		successMessage: "✅ Discord user saved. Use the verify button when you're ready.",
+		successMessage: "✅ Discord user saved.",
 	},
 };
 

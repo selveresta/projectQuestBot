@@ -77,9 +77,6 @@ export async function promptForContact(
 
 export class ContactHandler {
 	register(composer: Composer<BotContext>): void {
-		composer.command("email", (ctx) => promptForContact(ctx, "email"));
-		composer.command("wallet", (ctx) => promptForContact(ctx, "wallet"));
-
 		composer.on("message:text", this.handleTextMessage.bind(this));
 	}
 

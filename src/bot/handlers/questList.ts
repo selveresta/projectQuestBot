@@ -119,10 +119,6 @@ export class QuestListHandler {
 			lines.push("", "Reply to the prompt below with your email to submit or update it.");
 		}
 
-		// if (definition.id === "wallet_submit") {
-		// 	lines.push("", "Use /wallet to submit or update your EVM wallet.");
-		// }
-
 		if (definition.id === "discord_join") {
 			const inviteLink = ctx.config.links.discordInviteUrl;
 			if (user.discordUserId) {
@@ -135,10 +131,6 @@ export class QuestListHandler {
 				`2. In the verification channel, send: \`!verify ${userId}\``,
 				"3. Wait for the bot to confirm your verification here."
 			);
-		}
-
-		if (definition.phase === "stub" && !status.completed) {
-			lines.push("", "Phase 1 uses trust-based confirmation. Use the button below once you have finished the quest.");
 		}
 
 		lines.push("", 'Tip: tap "🗂 Quest list" in the menu to switch quests.');

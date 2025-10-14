@@ -49,7 +49,7 @@ export class CaptchaHandler {
 		}
 
 		await repo.markCaptchaPassed(userId);
-		await ctx.editMessageText("✅ You passed the human check! Let's complete the quests.");
+		await ctx.editMessageText("✅ You passed the human check!");
 		await this.showMainMenu(ctx);
 	}
 

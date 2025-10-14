@@ -12,7 +12,7 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 		{
 			id: "telegram_channel",
 			title: "Subscribe to the Telegram channel",
-			description: "Join the official Project Quest announcement channel to receive the latest updates.",
+			description: "Join the official Trady Quest announcement channel to receive the latest updates.",
 			mandatory: true,
 			type: "telegram_channel",
 			phase: telegram.channelId ? "live" : "stub",
