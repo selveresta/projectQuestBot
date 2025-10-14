@@ -3,23 +3,24 @@ import { Composer, InlineKeyboard } from "grammy";
 import type { BotContext } from "../../types/context";
 import type { QuestDefinition, QuestId } from "../../types/quest";
 import {
-	getExistingSocialUrl,
-	getSocialInvalidMessage,
-	getSocialSuccessMessage,
-	identifySocialQuestFromMessage,
-	isSocialQuestId,
-	isValidSocialProfileInput,
-	normalizeSocialProfileInput,
-	promptForSocialProfile,
-	saveSocialProfile,
-	getSocialPlatform,
-	getSocialTargetUrl,
-	ensureSocialBaseline,
-	getSocialBaseline,
-	isBaselinePending,
-	clearSocialBaseline,
-	clearPendingSocialQuest,
+        getExistingSocialUrl,
+        getSocialInvalidMessage,
+        getSocialSuccessMessage,
+        identifySocialQuestFromMessage,
+        isSocialQuestId,
+        isValidSocialProfileInput,
+        normalizeSocialProfileInput,
+        promptForSocialProfile,
+        saveSocialProfile,
+        getSocialPlatform,
+        getSocialTargetUrl,
+        ensureSocialBaseline,
+        getSocialBaseline,
+        isBaselinePending,
+        clearSocialBaseline,
+        clearPendingSocialQuest,
 } from "../helpers/socialQuests";
+import { sendQuestDetailMessage } from "./questList";
 import { verifySocialFollow, DEFAULT_WAIT_MS } from "../../services/socialVerification";
 
 export class StubQuestHandler {
@@ -261,9 +262,15 @@ export class StubQuestHandler {
 
 		const userId = ctx.from.id;
 		const normalized = normalizeSocialProfileInput(input, questId);
-		await saveSocialProfile(ctx.services.questService, userId, questId, normalized);
-		await clearSocialBaseline(ctx, userId, questId);
-		await clearPendingSocialQuest(ctx);
-		await ctx.reply(getSocialSuccessMessage(questId));
-	}
+                await saveSocialProfile(ctx.services.questService, userId, questId, normalized);
+                await clearSocialBaseline(ctx, userId, questId);
+                await clearPendingSocialQuest(ctx);
+                await ctx.reply(getSocialSuccessMessage(questId));
+
+                const statuses = await ctx.services.questService.buildQuestStatus(userId);
+                const status = statuses.find((item) => item.definition.id === questId);
+                if (status) {
+                        await sendQuestDetailMessage(ctx, userId, status);
+                }
+        }
 }

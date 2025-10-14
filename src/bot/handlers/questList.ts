@@ -3,7 +3,12 @@ import { Composer, InlineKeyboard, Keyboard } from "grammy";
 import type { BotContext } from "../../types/context";
 import type { QuestId } from "../../types/quest";
 import type { QuestStatus } from "../../services/questService";
-import { getExistingSocialUrl, isSocialQuestId, ensureSocialBaseline, promptForSocialProfile } from "../helpers/socialQuests";
+import {
+        getExistingSocialUrl,
+        isSocialQuestId,
+        ensureSocialBaseline,
+        promptForSocialProfile,
+} from "../helpers/socialQuests";
 import { TelegramMembershipVerifier } from "../helpers/membership";
 import { BUTTON_BACK_TO_MENU, BUTTON_CHECK_STATUS, BUTTON_QUEST_LIST, buildMainMenuKeyboard } from "../ui/replyKeyboards";
 import { promptForContact } from "./contact";
@@ -59,10 +64,10 @@ export class QuestListHandler {
 			return;
 		}
 
-		await this.sendQuestDetail(ctx, userId, target);
-	}
+                await sendQuestDetailMessage(ctx, userId, target);
+        }
 
-	private async sendQuestList(ctx: BotContext, userId: number): Promise<void> {
+        private async sendQuestList(ctx: BotContext, userId: number): Promise<void> {
 		const questService = ctx.services.questService;
 		const statuses = await questService.buildQuestStatus(userId);
 		const visibleStatuses = statuses.filter((status) => this.shouldDisplay(status));
@@ -81,91 +86,7 @@ export class QuestListHandler {
 			{ reply_markup: keyboard }
 		);
 	}
-
-	private async sendQuestDetail(ctx: BotContext, userId: number, status: QuestStatus): Promise<void> {
-		const questService = ctx.services.questService;
-		const { definition } = status;
-		const user = await questService.getUser(userId);
-		const existingSocialUrl = isSocialQuestId(definition.id) ? getExistingSocialUrl(user, definition.id) : undefined;
-		if (isSocialQuestId(definition.id) && existingSocialUrl) {
-			void ensureSocialBaseline(ctx, userId, definition.id, existingSocialUrl).catch((error) => {
-				console.error("[questList] failed to ensure social baseline", {
-					userId,
-					questId: definition.id,
-					error,
-				});
-			});
-		}
-
-                if (isSocialQuestId(definition.id) && !existingSocialUrl) {
-                        await promptForSocialProfile(ctx, definition.id);
-                }
-
-                const lines = [
-                        `${status.completed ? "✅" : "⏳"} ${definition.title}`,
-			"",
-			definition.description,
-			"",
-			status.completed ? `Status: Completed${status.completedAt ? ` at ${status.completedAt}` : ""}.` : "Status: Pending completion.",
-		];
-
-		if (existingSocialUrl) {
-			lines.push(`Stored profile: ${existingSocialUrl}`);
-		} else if (status.metadata) {
-			lines.push(`Submission: ${status.metadata}`);
-		}
-
-		if (definition.url) {
-			lines.push(`Official link: ${definition.url}`);
-		}
-
-		if (definition.id === "email_submit") {
-			lines.push("", "Reply to the prompt below with your email to submit or update it.");
-		}
-
-		// if (definition.id === "wallet_submit") {
-		// 	lines.push("", "Use /wallet to submit or update your EVM wallet.");
-		// }
-
-		if (definition.id === "discord_join") {
-			const inviteLink = ctx.config.links.discordInviteUrl;
-			if (user.discordUserId) {
-				lines.push("", `Linked Discord ID: ${user.discordUserId}`);
-			}
-			lines.push(
-				"",
-				"Discord verification steps:",
-				inviteLink ? `1. Join the Discord server: ${inviteLink}` : "1. Join the Discord server.",
-				`2. In the verification channel, send: \`!verify ${userId}\``,
-				"3. Wait for the bot to confirm your verification here."
-			);
-		}
-
-		if (definition.phase === "stub" && !status.completed) {
-			lines.push("", "Phase 1 uses trust-based confirmation. Use the button below once you have finished the quest.");
-		}
-
-		lines.push("", 'Tip: tap "🗂 Quest list" in the menu to switch quests.');
-
-		const keyboard = this.buildQuestDetailKeyboard(status, existingSocialUrl);
-
-		await ctx.reply(lines.join("\n"), {
-			reply_markup: keyboard,
-			parse_mode: definition.id === "discord_join" ? "Markdown" : "HTML",
-			link_preview_options: { is_disabled: true },
-		});
-
-		if (definition.id === "email_submit") {
-			const existingEmail = user.email ?? status.metadata ?? undefined;
-			await promptForContact(ctx, "email", existingEmail);
-		}
-		if (definition.id === "wallet_submit") {
-			const existingEmail = user.wallet ?? status.metadata ?? undefined;
-			await promptForContact(ctx, "wallet", existingEmail);
-		}
-	}
-
-	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
+        private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
 		const keyboard = new Keyboard();
 		statuses.forEach((status, index) => {
 			keyboard.text(this.questButtonLabel(status));
@@ -182,80 +103,9 @@ export class QuestListHandler {
 		return keyboard.resized().persistent();
 	}
 
-	private buildQuestDetailKeyboard(status: QuestStatus, existingSocialUrl?: string): InlineKeyboard {
-		const { definition } = status;
-		const keyboard = new InlineKeyboard();
-		const socialQuest = isSocialQuestId(definition.id);
-
-		const addOfficialLink = (): boolean => {
-			if (definition.url) {
-				keyboard.url(definition.cta ?? "Open link", definition.url);
-				return true;
-			}
-			return false;
-		};
-
-		switch (definition.id) {
-			case "telegram_channel": {
-				const hasButton = addOfficialLink();
-				if (hasButton) {
-					keyboard.row();
-				}
-				keyboard.text("Check channel membership", "quest-check:telegram_channel");
-				break;
-			}
-			case "telegram_chat": {
-				const hasButton = addOfficialLink();
-				if (hasButton) {
-					keyboard.row();
-				}
-				keyboard.text("Check chat membership", "quest-check:telegram_chat");
-				break;
-			}
-			case "discord_join": {
-				const hasButton = addOfficialLink();
-				if (hasButton) {
-					keyboard.row();
-				}
-				keyboard.text("Check Discord status", "quest-check:discord_join");
-				break;
-			}
-			default: {
-				const hadLink = addOfficialLink();
-                                if (socialQuest) {
-                                        if (existingSocialUrl) {
-                                                if (hadLink) {
-                                                        keyboard.row();
-                                                }
-                                                keyboard.row();
-                                                const verifyLabel =
-                                                        definition.id === "instagram_follow"
-                                                                ? "✅ Follow on Instagram"
-                                                                : definition.id === "x_follow"
-                                                                ? "✅ Follow on X"
-                                                                : "✅ Verify";
-                                                keyboard.text(verifyLabel, `quest:${definition.id}:verify`);
-                                        } else {
-                                                if (hadLink) {
-                                                        keyboard.row();
-                                                }
-                                                keyboard.text("Submit profile link", `quest:${definition.id}:complete`);
-					}
-				} else if (!status.completed && definition.phase === "stub") {
-					if (hadLink) {
-						keyboard.row();
-					}
-					keyboard.text("Mark as complete", `quest:${definition.id}:complete`);
-				}
-			}
-		}
-
-		return keyboard;
-	}
-
-	private shouldDisplay(status: QuestStatus): boolean {
-		if (isSocialQuestId(status.definition.id) && !status.definition.url) {
-			return false;
+        private shouldDisplay(status: QuestStatus): boolean {
+                if (isSocialQuestId(status.definition.id) && !status.definition.url) {
+                        return false;
 		}
 		return true;
 	}
@@ -303,4 +153,164 @@ export class QuestListHandler {
 
 		await ctx.answerCallbackQuery({ text: "Unsupported quest." });
 	}
+}
+
+export async function sendQuestDetailMessage(
+        ctx: BotContext,
+        userId: number,
+        status: QuestStatus
+): Promise<boolean> {
+        const questService = ctx.services.questService;
+        const { definition } = status;
+        const user = await questService.getUser(userId);
+        const existingSocialUrl = isSocialQuestId(definition.id) ? getExistingSocialUrl(user, definition.id) : undefined;
+
+        if (isSocialQuestId(definition.id) && existingSocialUrl) {
+                void ensureSocialBaseline(ctx, userId, definition.id, existingSocialUrl).catch((error) => {
+                        console.error("[questList] failed to ensure social baseline", {
+                                userId,
+                                questId: definition.id,
+                                error,
+                        });
+                });
+        }
+
+        if (isSocialQuestId(definition.id) && !existingSocialUrl) {
+                await promptForSocialProfile(ctx, definition.id);
+                return false;
+        }
+
+        const lines = [
+                `${status.completed ? "✅" : "⏳"} ${definition.title}`,
+                "",
+                definition.description,
+                "",
+                status.completed
+                        ? `Status: Completed${status.completedAt ? ` at ${status.completedAt}` : ""}.`
+                        : "Status: Pending completion.",
+        ];
+
+        if (existingSocialUrl) {
+                lines.push(`Stored profile: ${existingSocialUrl}`);
+        } else if (status.metadata) {
+                lines.push(`Submission: ${status.metadata}`);
+        }
+
+        if (definition.url) {
+                lines.push(`Official link: ${definition.url}`);
+        }
+
+        if (definition.id === "email_submit") {
+                lines.push("", "Reply to the prompt below with your email to submit or update it.");
+        }
+
+        if (definition.id === "discord_join") {
+                const inviteLink = ctx.config.links.discordInviteUrl;
+                if (user.discordUserId) {
+                        lines.push("", `Linked Discord ID: ${user.discordUserId}`);
+                }
+                lines.push(
+                        "",
+                        "Discord verification steps:",
+                        inviteLink ? `1. Join the Discord server: ${inviteLink}` : "1. Join the Discord server.",
+                        `2. In the verification channel, send: \`!verify ${userId}\``,
+                        "3. Wait for the bot to confirm your verification here."
+                );
+        }
+
+        if (definition.phase === "stub" && !status.completed) {
+                lines.push("", "Phase 1 uses trust-based confirmation. Use the button below once you have finished the quest.");
+        }
+
+        lines.push("", 'Tip: tap "🗂 Quest list" in the menu to switch quests.');
+
+        const keyboard = buildQuestDetailKeyboard(status, existingSocialUrl);
+
+        await ctx.reply(lines.join("\n"), {
+                reply_markup: keyboard,
+                parse_mode: definition.id === "discord_join" ? "Markdown" : "HTML",
+                link_preview_options: { is_disabled: true },
+        });
+
+        if (definition.id === "email_submit") {
+                const existingEmail = user.email ?? status.metadata ?? undefined;
+                await promptForContact(ctx, "email", existingEmail);
+        }
+        if (definition.id === "wallet_submit") {
+                const existingEmail = user.wallet ?? status.metadata ?? undefined;
+                await promptForContact(ctx, "wallet", existingEmail);
+        }
+
+        return true;
+}
+
+function buildQuestDetailKeyboard(status: QuestStatus, existingSocialUrl?: string): InlineKeyboard {
+        const { definition } = status;
+        const keyboard = new InlineKeyboard();
+        const socialQuest = isSocialQuestId(definition.id);
+
+        const addOfficialLink = (): boolean => {
+                if (definition.url) {
+                        keyboard.url(definition.cta ?? "Open link", definition.url);
+                        return true;
+                }
+                return false;
+        };
+
+        switch (definition.id) {
+                case "telegram_channel": {
+                        const hasButton = addOfficialLink();
+                        if (hasButton) {
+                                keyboard.row();
+                        }
+                        keyboard.text("Check channel membership", "quest-check:telegram_channel");
+                        break;
+                }
+                case "telegram_chat": {
+                        const hasButton = addOfficialLink();
+                        if (hasButton) {
+                                keyboard.row();
+                        }
+                        keyboard.text("Check chat membership", "quest-check:telegram_chat");
+                        break;
+                }
+                case "discord_join": {
+                        const hasButton = addOfficialLink();
+                        if (hasButton) {
+                                keyboard.row();
+                        }
+                        keyboard.text("Check Discord status", "quest-check:discord_join");
+                        break;
+                }
+                default: {
+                        const hadLink = addOfficialLink();
+                        if (socialQuest) {
+                                if (existingSocialUrl) {
+                                        if (hadLink) {
+                                                keyboard.row();
+                                        }
+                                        keyboard.row();
+                                        const verifyLabel =
+                                                definition.id === "instagram_follow"
+                                                        ? "✅ Follow on Instagram"
+                                                        : definition.id === "x_follow"
+                                                        ? "✅ Follow on X"
+                                                        : "✅ Verify";
+                                        keyboard.text(verifyLabel, `quest:${definition.id}:verify`);
+                                } else {
+                                        if (hadLink) {
+                                                keyboard.row();
+                                        }
+                                        keyboard.text("Submit profile link", `quest:${definition.id}:complete`);
+                                }
+                        } else if (!status.completed && definition.phase === "stub") {
+                                if (hadLink) {
+                                        keyboard.row();
+                                }
+                                keyboard.text("Mark as complete", `quest:${definition.id}:complete`);
+                        }
+                }
+        }
+
+        return keyboard;
 }
