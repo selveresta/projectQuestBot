@@ -3,7 +3,7 @@ import { Composer, InlineKeyboard, Keyboard } from "grammy";
 import type { BotContext } from "../../types/context";
 import type { QuestId } from "../../types/quest";
 import type { QuestStatus } from "../../services/questService";
-import { getExistingSocialUrl, isSocialQuestId, ensureSocialBaseline } from "../helpers/socialQuests";
+import { getExistingSocialUrl, isSocialQuestId, ensureSocialBaseline, promptForSocialProfile } from "../helpers/socialQuests";
 import { TelegramMembershipVerifier } from "../helpers/membership";
 import { BUTTON_BACK_TO_MENU, BUTTON_CHECK_STATUS, BUTTON_QUEST_LIST, buildMainMenuKeyboard } from "../ui/replyKeyboards";
 import { promptForContact } from "./contact";
@@ -97,8 +97,12 @@ export class QuestListHandler {
 			});
 		}
 
-		const lines = [
-			`${status.completed ? "✅" : "⏳"} ${definition.title}`,
+                if (isSocialQuestId(definition.id) && !existingSocialUrl) {
+                        await promptForSocialProfile(ctx, definition.id);
+                }
+
+                const lines = [
+                        `${status.completed ? "✅" : "⏳"} ${definition.title}`,
 			"",
 			definition.description,
 			"",
@@ -218,18 +222,24 @@ export class QuestListHandler {
 			}
 			default: {
 				const hadLink = addOfficialLink();
-				if (socialQuest) {
-					if (existingSocialUrl) {
-						if (hadLink) {
-							keyboard.row();
-						}
-						keyboard.row();
-						keyboard.text("✅ Verify", `quest:${definition.id}:verify`);
-					} else {
-						if (hadLink) {
-							keyboard.row();
-						}
-						keyboard.text("Submit profile link", `quest:${definition.id}:complete`);
+                                if (socialQuest) {
+                                        if (existingSocialUrl) {
+                                                if (hadLink) {
+                                                        keyboard.row();
+                                                }
+                                                keyboard.row();
+                                                const verifyLabel =
+                                                        definition.id === "instagram_follow"
+                                                                ? "✅ Follow on Instagram"
+                                                                : definition.id === "x_follow"
+                                                                ? "✅ Follow on X"
+                                                                : "✅ Verify";
+                                                keyboard.text(verifyLabel, `quest:${definition.id}:verify`);
+                                        } else {
+                                                if (hadLink) {
+                                                        keyboard.row();
+                                                }
+                                                keyboard.text("Submit profile link", `quest:${definition.id}:complete`);
 					}
 				} else if (!status.completed && definition.phase === "stub") {
 					if (hadLink) {

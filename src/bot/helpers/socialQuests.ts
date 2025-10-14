@@ -16,39 +16,43 @@ const SOCIAL_PLATFORM_MAP: Record<SocialQuestId, SocialPlatform> = {
 };
 
 interface SocialQuestConfig {
-	field: "xProfileUrl" | "instagramProfileUrl" | "discordUserId";
-	promptPrefix: string;
-	sampleUrl: string;
-	allowedDomains: string[];
-	invalidMessage: string;
-	successMessage: string;
+        field: "xProfileUrl" | "instagramProfileUrl" | "discordUserId";
+        promptTitle: string;
+        promptInstruction: string;
+        example: string;
+        allowedDomains: string[];
+        invalidMessage: string;
+        successMessage: string;
 }
 
 const SOCIAL_QUESTS: Record<SocialQuestId, SocialQuestConfig> = {
-	x_follow: {
-		field: "xProfileUrl",
-		promptPrefix: "🔗 Share your X profile link.",
-		sampleUrl: "https://x.com/yourhandle",
-		allowedDomains: ["x.com", "twitter.com"],
-		invalidMessage: "Please send the link to your X profile (for example: https://x.com/yourhandle).",
-		successMessage: "✅ X profile saved. Use the verify button when you're ready.",
-	},
-	instagram_follow: {
-		field: "instagramProfileUrl",
-		promptPrefix: "📸 Share your Instagram profile link.",
-		sampleUrl: "https://instagram.com/yourhandle",
-		allowedDomains: ["instagram.com"],
-		invalidMessage: "Please send the link to your Instagram profile (for example: https://instagram.com/yourhandle).",
-		successMessage: "✅ Instagram profile saved. Use the verify button when you're ready.",
-	},
-	discord_join: {
-		field: "discordUserId",
-		promptPrefix: "📸 Share your Discord user ID.",
-		sampleUrl: "272413599446597632",
-		allowedDomains: ["discord.com"],
-		invalidMessage: "Please send the ID to your Discord user (for example: 272413599446597632).",
-		successMessage: "✅ Discord user saved. Use the verify button when you're ready.",
-	},
+        x_follow: {
+                field: "xProfileUrl",
+                promptTitle: "Follow on X (Twitter)",
+                promptInstruction: "Please reply with your profile link.",
+                example: "https://x.com/yourhandle",
+                allowedDomains: ["x.com", "twitter.com"],
+                invalidMessage: "Please send the link to your X profile (for example: https://x.com/yourhandle).",
+                successMessage: "✅ X profile saved. Use the verify button when you're ready.",
+        },
+        instagram_follow: {
+                field: "instagramProfileUrl",
+                promptTitle: "Follow on Instagram",
+                promptInstruction: "Please reply with your profile link.",
+                example: "https://instagram.com/yourhandle",
+                allowedDomains: ["instagram.com"],
+                invalidMessage: "Please send the link to your Instagram profile (for example: https://instagram.com/yourhandle).",
+                successMessage: "✅ Instagram profile saved. Use the verify button when you're ready.",
+        },
+        discord_join: {
+                field: "discordUserId",
+                promptTitle: "Join the Discord server",
+                promptInstruction: "Please reply with your Discord user ID.",
+                example: "272413599446597632",
+                allowedDomains: ["discord.com"],
+                invalidMessage: "Please send the ID to your Discord user (for example: 272413599446597632).",
+                successMessage: "✅ Discord user saved. Use the verify button when you're ready.",
+        },
 };
 
 export function isSocialQuestId(questId: QuestId): questId is SocialQuestId {
@@ -209,18 +213,20 @@ export async function ensureSocialBaseline(
 }
 
 export async function promptForSocialProfile(ctx: BotContext, questId: SocialQuestId, existing?: string): Promise<void> {
-	const config = getSocialQuestConfig(questId);
-	const instructions =
-		questId === "discord_join"
-			? `Reply with the ID \n(for example: ${config.sampleUrl}).`
-			: `Reply with the full URL \n(for example: ${config.sampleUrl}).`;
-	const lines = [config.promptPrefix, existing ? `Current submission: ${existing}` : undefined, instructions].filter(Boolean);
+        const config = getSocialQuestConfig(questId);
+        const exampleLine = `(for example: ${config.example})`;
+        const lines = [
+                config.promptTitle,
+                config.promptInstruction,
+                ...(existing ? [`Current submission: ${existing}`] : []),
+                exampleLine,
+        ];
 
-	await setPendingSocialQuest(ctx, questId);
-	await ctx.reply(lines.join("\n"), {
-		reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-		link_preview_options: { is_disabled: true },
-	});
+        await setPendingSocialQuest(ctx, questId);
+        await ctx.reply(lines.join("\n"), {
+                reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+                link_preview_options: { is_disabled: true },
+        });
 }
 
 function identifySocialQuestFromReply(ctx: BotContext): SocialQuestId | undefined {
@@ -230,7 +236,7 @@ function identifySocialQuestFromReply(ctx: BotContext): SocialQuestId | undefine
 	}
 
 	const replyText = reply.text;
-	return SOCIAL_QUEST_IDS.find((questId) => replyText.startsWith(SOCIAL_QUESTS[questId].promptPrefix));
+        return SOCIAL_QUEST_IDS.find((questId) => replyText.startsWith(SOCIAL_QUESTS[questId].promptTitle));
 }
 
 function looksLikeDiscordId(input: string): boolean {

@@ -8,7 +8,6 @@ import { StatusCommandHandler } from "./commands/status";
 import { ContactHandler } from "./contact";
 import { StubQuestHandler } from "./questCompletion";
 import { QuestListHandler } from "./questList";
-import { SocialProfileHandler } from "./socialProfiles";
 
 export class BotHandlerRegistry {
 	build(): Composer<BotContext> {
@@ -20,7 +19,6 @@ export class BotHandlerRegistry {
 		const adminCommandHandler = new AdminCommandHandler();
 		const contactHandler = new ContactHandler();
 		const questListHandler = new QuestListHandler();
-		const socialProfileHandler = new SocialProfileHandler();
 
 		captchaHandler.register(composer);
 		startCommandHandler.register(composer);
@@ -28,7 +26,6 @@ export class BotHandlerRegistry {
 		adminCommandHandler.register(composer);
 		contactHandler.register(composer);
 		questListHandler.register(composer);
-		socialProfileHandler.register(composer);
 		stubQuestHandler.register(composer);
 
 		composer.command("help", this.handleHelpCommand);
