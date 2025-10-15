@@ -67,6 +67,16 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			cta: xProfileUrl ? "Open X profile" : undefined,
 		},
 		{
+			id: "x_like",
+			title: "Like the latest X post",
+			description: "Support the campaign by liking our highlighted post on X.",
+			mandatory: false,
+			type: "social_engagement",
+			phase: "stub",
+			url: xProfileUrl || undefined,
+			cta: xProfileUrl ? "Open X profile" : undefined,
+		},
+		{
 			id: "instagram_follow",
 			title: "Follow on Instagram",
 			description: `
@@ -91,10 +101,10 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			phase: "stub",
 			url: instagramProfileUrl || undefined,
 			cta: instagramProfileUrl ? "Open Instagram" : undefined,
-		},
-		{
-			id: "website_visit",
-			title: "Visit the website",
+                },
+                {
+                        id: "website_visit",
+                        title: "Visit the website",
 			description: "Explore the official website to learn more about the project vision.",
 			mandatory: true,
 			type: "website_visit",
@@ -111,14 +121,14 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			phase: "live",
 			cta: "Submit email",
 		},
-		{
-			id: "wallet_submit",
-			title: "Submit your EVM wallet",
-			description: "Provide an EVM-compatible wallet to receive rewards.",
-			mandatory: true,
-			type: "wallet_collection",
-			phase: "live",
-			cta: "Submit wallet",
-		},
-	];
+                {
+                        id: "wallet_submit",
+                        title: "Submit your EVM wallet",
+                        description: "Provide an EVM-compatible wallet to receive rewards.",
+                        mandatory: true,
+                        type: "wallet_collection",
+                        phase: "live",
+                        cta: "Submit wallet",
+                },
+        ];
 }

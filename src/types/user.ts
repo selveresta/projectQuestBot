@@ -18,6 +18,11 @@ export interface UserRecord {
   captchaAttempts: number;
   pendingCaptcha?: CaptchaChallenge | null;
   quests: QuestProgress;
+  points: number;
+  questPoints?: Partial<Record<QuestId, number>>;
+  referredBy?: number;
+  referralBonusClaimed?: boolean;
+  creditedReferrals?: number[];
   email?: string;
   wallet?: string;
   xProfileUrl?: string;
