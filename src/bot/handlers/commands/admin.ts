@@ -170,6 +170,33 @@ export class AdminCommandHandler {
 		return s;
 	}
 
+	private buildPointsEntryCsv(users: UserRecord[]): { filename: string; csv: string } {
+		const rows: string[] = [];
+		rows.push("username,id");
+
+		for (const user of users) {
+			const rawPoints = typeof user.points === "number" ? user.points : Number(user.points ?? 0);
+			const points = Number.isFinite(rawPoints) ? Math.max(0, Math.floor(rawPoints)) : 0;
+			if (points <= 0) {
+				continue;
+			}
+			const username = user.username ? `@${user.username}` : "";
+			const escapedUsername = this.csvEscape(username);
+			const escapedId = this.csvEscape(user.userId);
+			for (let index = 0; index < points; index += 1) {
+				rows.push(`${escapedUsername},${escapedId}`);
+			}
+		}
+
+		if (rows.length === 1) {
+			rows.push("# No users with positive points found,#");
+		}
+
+		const csv = rows.join("\n");
+		const filename = `points_entries_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+		return { filename, csv };
+	}
+
 	// Красиве представлення дашборду (перероблений handleAdminDashboard)
 	private async handleDashboard(ctx: BotContext): Promise<void> {
 		if (!this.assertAdmin(ctx)) return;
@@ -219,9 +246,15 @@ export class AdminCommandHandler {
 				  }));
 
 		const { filename, csv } = this.flattenUsersToCsv(users, effectiveQuestDefs as any);
+		const pointsCsv = this.buildPointsEntryCsv(users);
 
 		await ctx.replyWithDocument(new InputFile(Buffer.from(csv, "utf8"), filename), {
 			caption: "Exported users with quest progress (CSV).",
+			reply_markup: buildAdminKeyboard(),
+		});
+
+		await ctx.replyWithDocument(new InputFile(Buffer.from(pointsCsv.csv, "utf8"), pointsCsv.filename), {
+			caption: "Points entries (one line per point).",
 			reply_markup: buildAdminKeyboard(),
 		});
 	}
