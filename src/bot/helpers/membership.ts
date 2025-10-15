@@ -1,6 +1,7 @@
 import type { ChatMember } from "grammy/types";
 
 import type { BotContext } from "../../types/context";
+import { notifyReferralBonus } from "./referrals";
 import type { QuestId } from "../../types/quest";
 
 const ALLOWED_MEMBER_STATUSES: ChatMember["status"][] = ["administrator", "creator", "member"];
@@ -39,10 +40,11 @@ export class TelegramMembershipVerifier {
 				return false;
 			}
 
-			if (!alreadyCompleted) {
-				await questService.completeQuest(userId, descriptor.questId);
-				await ctx.reply(`✅ ${descriptor.successLabel} confirmed.`);
-			}
+                        if (!alreadyCompleted) {
+                                const completion = await questService.completeQuest(userId, descriptor.questId);
+                                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+                                await ctx.reply(`✅ ${descriptor.successLabel} confirmed.`);
+                        }
 
 			return true;
 		} catch (error) {

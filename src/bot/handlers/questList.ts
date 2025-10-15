@@ -5,7 +5,13 @@ import type { QuestId } from "../../types/quest";
 import type { QuestStatus } from "../../services/questService";
 import { getExistingSocialUrl, isSocialQuestId, ensureSocialBaseline } from "../helpers/socialQuests";
 import { TelegramMembershipVerifier } from "../helpers/membership";
-import { BUTTON_BACK_TO_MENU, BUTTON_CHECK_STATUS, BUTTON_QUEST_LIST, buildMainMenuKeyboard } from "../ui/replyKeyboards";
+import {
+        BUTTON_BACK_TO_MENU,
+        BUTTON_CHECK_STATUS,
+        BUTTON_QUEST_LIST,
+        MENU_PLACEHOLDER_TEXT,
+        buildMainMenuKeyboard,
+} from "../ui/replyKeyboards";
 import { promptForContact } from "./contact";
 
 const QUEST_BUTTON_PREFIXES = ["✅", "⏳"] as const;
@@ -27,11 +33,12 @@ export class QuestListHandler {
 		await this.sendQuestList(ctx, ctx.from.id);
 	}
 
-	private async handleBackToMenu(ctx: BotContext): Promise<void> {
-		await ctx.reply("Back to the main menu.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-		});
-	}
+        private async handleBackToMenu(ctx: BotContext): Promise<void> {
+                await ctx.reply(MENU_PLACEHOLDER_TEXT, {
+                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+                        link_preview_options: { is_disabled: true },
+                });
+        }
 
 	private async handleQuestSelection(ctx: BotContext, next: () => Promise<void>): Promise<void> {
 		if (!ctx.from) {

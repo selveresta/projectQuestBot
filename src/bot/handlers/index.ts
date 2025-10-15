@@ -10,6 +10,7 @@ import { StubQuestHandler } from "./questCompletion";
 import { QuestListHandler } from "./questList";
 import { SocialProfileHandler } from "./socialProfiles";
 import { LeaderboardHandler } from "./leaderboard";
+import { ReferralInviteHandler } from "./referralInvite";
 
 export class BotHandlerRegistry {
 	build(): Composer<BotContext> {
@@ -19,10 +20,11 @@ export class BotHandlerRegistry {
 		const startCommandHandler = new StartCommandHandler();
 		const statusCommandHandler = new StatusCommandHandler(stubQuestHandler);
 		const adminCommandHandler = new AdminCommandHandler();
-		const contactHandler = new ContactHandler();
+                const contactHandler = new ContactHandler();
                 const questListHandler = new QuestListHandler();
                 const socialProfileHandler = new SocialProfileHandler();
                 const leaderboardHandler = new LeaderboardHandler();
+                const referralInviteHandler = new ReferralInviteHandler();
 
                 captchaHandler.register(composer);
                 startCommandHandler.register(composer);
@@ -32,6 +34,7 @@ export class BotHandlerRegistry {
                 questListHandler.register(composer);
                 socialProfileHandler.register(composer);
                 leaderboardHandler.register(composer);
+                referralInviteHandler.register(composer);
                 stubQuestHandler.register(composer);
 
 		composer.command("help", this.handleHelpCommand);

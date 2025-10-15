@@ -2,13 +2,13 @@ import { Composer, InputFile, Keyboard } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 import {
-	buildAdminKeyboard,
-	buildMainMenuKeyboard,
-	buildMainMenuMessage,
-	BUTTON_ADMIN_DASHBOARD,
-	BUTTON_ADMIN_DOWNLOAD,
-	BUTTON_ADMIN_PANEL,
-	BUTTON_BACK_TO_MENU,
+        buildAdminKeyboard,
+        buildMainMenuKeyboard,
+        BUTTON_ADMIN_DASHBOARD,
+        BUTTON_ADMIN_DOWNLOAD,
+        BUTTON_ADMIN_PANEL,
+        BUTTON_BACK_TO_MENU,
+        MENU_PLACEHOLDER_TEXT,
 } from "../../ui/replyKeyboards";
 import { QuestDefinition } from "../../../types/quest";
 import { UserRecord } from "../../../types/user";
@@ -231,9 +231,11 @@ export class AdminCommandHandler {
 		// Припустимо, що у тебе вже є builder головного меню:
 		// import { buildMainMenuMessage, buildMainMenuKeyboard } from "...";
 
-		const text = buildMainMenuMessage();
-		const kb = buildMainMenuKeyboard(ctx.config, ctx.chatId);
+                const kb = buildMainMenuKeyboard(ctx.config, ctx.chatId);
 
-		await ctx.reply(text, { reply_markup: kb });
-	}
+                await ctx.reply(MENU_PLACEHOLDER_TEXT, {
+                        reply_markup: kb,
+                        link_preview_options: { is_disabled: true },
+                });
+        }
 }

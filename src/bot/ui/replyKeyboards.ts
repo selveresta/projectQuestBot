@@ -13,16 +13,17 @@ export const BUTTON_ADMIN_PANEL = "🛠 Admin panel";
 export const BUTTON_ADMIN_DASHBOARD = "📊 Admin dashboard";
 export const BUTTON_ADMIN_DOWNLOAD = "⬇️ Download users (CSV)";
 export const BUTTON_LEADERBOARD = "🏆 Leaderboard";
+export const BUTTON_INVITE_FRIENDS = "⏳ Invite Friends";
 
-export interface MainMenuMessageOptions {
-        points?: number;
-        referralsCount?: number;
-        referralLink?: string;
-}
+export const MENU_PLACEHOLDER_TEXT = "\u2063";
 
-export function buildMainMenuMessage(options: MainMenuMessageOptions = {}): string {
-        const lines = [
+export function buildWelcomeAnnouncement(): string {
+        return [
                 "Welcome to the Trady Giveaway 🎉",
+                "",
+                "Trady it's all-in-one alpha trading terminal.",
+                "",
+                "Unified Balance • All On-chain • No KYC • Custom UI • Self-Custody",
                 "",
                 "Get ready to join our exclusive $5,000 reward campaign!",
                 "Complete all quests below to enter the draw and secure your spot among 100 winners.",
@@ -34,34 +35,36 @@ export function buildMainMenuMessage(options: MainMenuMessageOptions = {}): stri
                 "2nd place — $550 + invite code",
                 "3–5 place — $150 + invite code",
                 "6–10 place — $100 + invite code",
-                "11–50 place — $40",
-                "51–100 place — $20",
+                "11–50 place — $40 + invite code",
+                "51–100 place — $20 + invite code",
+                "",
+                "⏰ Period:",
+                "",
+                "20 October – 10 November",
                 "",
                 "🪂 Your mission:",
-                "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email and EVM wallet.",
+                "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email and wallet (EVM).",
                 "",
-                "Tap \"🗂 Quest list\" below and start completing tasks now — every step brings you closer to the rewards.",
-        ];
+                "Tap Quests list below and start completing tasks now — every step brings you closer to the rewards.",
+        ].join("\n");
+}
 
-        const extras: string[] = [];
-        if (typeof options.points === "number") {
-                extras.push(`🏅 Your points: ${options.points}`);
-        }
-        if (typeof options.referralsCount === "number") {
-                extras.push(`👥 Friends credited: ${options.referralsCount}`);
-        }
-        if (options.referralLink) {
-                if (extras.length > 0) {
-                        extras.push("");
-                }
-                extras.push("🔗 Share your referral link:", options.referralLink, "Earn +1 point when a friend completes their first quest.");
-        }
-
-        if (extras.length > 0) {
-                lines.push("", ...extras);
-        }
-
-        return lines.join("\n");
+export function buildReferralInviteMessage(referralsCount: number, referralLink: string): string {
+        return [
+                "⏳ Invite Friends",
+                "",
+                "Invite your friends to join the Trady Giveaway and earn points for each active referral.",
+                "You’ll receive points only after your referral completes at least one quest.",
+                "",
+                `Status: ${referralsCount} referrals confirmed.`,
+                "",
+                "🔗 Your unique referral link:",
+                referralLink,
+                "",
+                "📨 Share this link with your friends and start earning points!",
+                "",
+                "Tip: tap “🗂 Quest list” in the menu to switch quests.",
+        ].join("\n");
 }
 
 export function buildMainMenuKeyboard(config?: AppConfig, adminId?: number): Keyboard {
@@ -94,6 +97,8 @@ export function buildMainMenuKeyboard(config?: AppConfig, adminId?: number): Key
                 .row()
                 .text(BUTTON_CHECK_STATUS)
                 .text(BUTTON_LEADERBOARD);
+
+        keyboard.row().text(BUTTON_INVITE_FRIENDS);
         return keyboard.resized().persistent();
 }
 

@@ -2,7 +2,7 @@ import { Composer, InlineKeyboard } from "grammy";
 
 import type { BotContext } from "../../types/context";
 import type { UserRecord } from "../../types/user";
-import { buildMainMenuKeyboard, buildMainMenuMessage, buildReferralLink } from "../ui/replyKeyboards";
+import { buildMainMenuKeyboard, buildWelcomeAnnouncement } from "../ui/replyKeyboards";
 
 export class CaptchaHandler {
 	static buildKeyboard(options: string[]): InlineKeyboard {
@@ -85,13 +85,8 @@ export class CaptchaHandler {
 		}
 	}
 
-        private async showMainMenu(ctx: BotContext, user: UserRecord): Promise<void> {
-                const referralLink = buildReferralLink(ctx.me?.username, user.userId);
-                const message = buildMainMenuMessage({
-                        points: user.points ?? 0,
-                        referralsCount: user.creditedReferrals?.length ?? 0,
-                        referralLink,
-                });
+        private async showMainMenu(ctx: BotContext, _user: UserRecord): Promise<void> {
+                const message = buildWelcomeAnnouncement();
                 await ctx.reply(message, {
                         reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
                         link_preview_options: { is_disabled: true },

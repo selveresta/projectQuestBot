@@ -1,7 +1,7 @@
 import { Composer } from "grammy";
 
 import type { BotContext } from "../../../types/context";
-import { buildMainMenuKeyboard, buildMainMenuMessage, buildReferralLink } from "../../ui/replyKeyboards";
+import { buildMainMenuKeyboard, MENU_PLACEHOLDER_TEXT } from "../../ui/replyKeyboards";
 import { CaptchaHandler } from "../captcha";
 import type { UserRecord } from "../../../types/user";
 
@@ -64,14 +64,8 @@ export class StartCommandHandler {
                 );
         }
 
-        private async showMainMenu(ctx: BotContext, user: UserRecord): Promise<void> {
-                const referralLink = buildReferralLink(ctx.me?.username, user.userId);
-                const message = buildMainMenuMessage({
-                        points: user.points ?? 0,
-                        referralsCount: user.creditedReferrals?.length ?? 0,
-                        referralLink,
-                });
-                await ctx.reply(message, {
+        private async showMainMenu(ctx: BotContext, _user: UserRecord): Promise<void> {
+                await ctx.reply(MENU_PLACEHOLDER_TEXT, {
                         reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
                         link_preview_options: { is_disabled: true },
                 });

@@ -3,23 +3,24 @@ import { Composer, InlineKeyboard } from "grammy";
 import type { BotContext } from "../../types/context";
 import type { QuestDefinition, QuestId } from "../../types/quest";
 import {
-	getExistingSocialUrl,
-	getSocialInvalidMessage,
-	getSocialSuccessMessage,
-	identifySocialQuestFromMessage,
-	isSocialQuestId,
-	isValidSocialProfileInput,
-	normalizeSocialProfileInput,
-	promptForSocialProfile,
-	saveSocialProfile,
-	getSocialPlatform,
-	getSocialTargetUrl,
-	ensureSocialBaseline,
-	getSocialBaseline,
-	isBaselinePending,
-	clearSocialBaseline,
-	clearPendingSocialQuest,
+        getExistingSocialUrl,
+        getSocialInvalidMessage,
+        getSocialSuccessMessage,
+        identifySocialQuestFromMessage,
+        isSocialQuestId,
+        isValidSocialProfileInput,
+        normalizeSocialProfileInput,
+        promptForSocialProfile,
+        saveSocialProfile,
+        getSocialPlatform,
+        getSocialTargetUrl,
+        ensureSocialBaseline,
+        getSocialBaseline,
+        isBaselinePending,
+        clearSocialBaseline,
+        clearPendingSocialQuest,
 } from "../helpers/socialQuests";
+import { notifyReferralBonus } from "../helpers/referrals";
 import { verifySocialFollow, DEFAULT_WAIT_MS } from "../../services/socialVerification";
 
 export class StubQuestHandler {
@@ -106,11 +107,12 @@ export class StubQuestHandler {
 			return;
 		}
 
-		await questService.completeQuest(userId, questId);
-		await ctx.answerCallbackQuery({
-			text: `${quest.title} marked as complete.`,
-			show_alert: false,
-		});
+                const completion = await questService.completeQuest(userId, questId);
+                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+                await ctx.answerCallbackQuery({
+                        text: `${quest.title} marked as complete.`,
+                        show_alert: false,
+                });
 
 		await ctx.editMessageText("Quest recorded. Run /status to check your updated progress.");
 	}
@@ -215,11 +217,12 @@ export class StubQuestHandler {
 				targetBefore: result.targetBefore,
 				targetAfter: result.targetAfter,
 			});
-			await questService.completeQuest(userId, questId, metadata);
-			await ctx.api.editMessageText(
-				pendingMessage.chat.id,
-				pendingMessage.message_id,
-				"✅ Follow verified! The quest has been marked as complete."
+                        const completion = await questService.completeQuest(userId, questId, metadata);
+                        await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+                        await ctx.api.editMessageText(
+                                pendingMessage.chat.id,
+                                pendingMessage.message_id,
+                                "✅ Follow verified! The quest has been marked as complete."
 			);
 		} catch (error) {
 			console.error("[socialVerification] failed", {

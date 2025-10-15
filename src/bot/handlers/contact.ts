@@ -1,6 +1,7 @@
 import { Composer } from "grammy";
 
 import type { BotContext } from "../../types/context";
+import { notifyReferralBonus } from "../helpers/referrals";
 import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
 
 export const EMAIL_PROMPT =
@@ -120,11 +121,12 @@ export class ContactHandler {
 		}
 
 		await ctx.services.questService.updateContact(userId, { email });
-		await ctx.services.questService.completeQuest(userId, "email_submit", email);
-		await clearPendingContact(ctx, "email");
-		await ctx.reply("✅ Email saved. You can update it at any time via the menu.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-		});
+                const completion = await ctx.services.questService.completeQuest(userId, "email_submit", email);
+                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+                await clearPendingContact(ctx, "email");
+                await ctx.reply("✅ Email saved. You can update it at any time via the menu.", {
+                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+                });
 	}
 
         private async processWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
@@ -136,7 +138,8 @@ export class ContactHandler {
 		}
 
                 await ctx.services.questService.updateContact(userId, { wallet });
-                await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
+                const completion = await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
+                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
                 await clearPendingContact(ctx, "wallet");
                 await ctx.reply("✅ Wallet saved. Run /status to make sure everything looks good.", {
                         reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),

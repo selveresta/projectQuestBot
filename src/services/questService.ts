@@ -9,6 +9,11 @@ export interface QuestStatus {
         metadata?: string;
 }
 
+export interface QuestCompletionResult {
+        user: UserRecord;
+        referralRewardedReferrerId?: number;
+}
+
 const QUEST_POINT_VALUES: Partial<Record<QuestId, number>> = {
         telegram_channel: 2,
         telegram_chat: 2,
@@ -60,13 +65,13 @@ export class QuestService {
 		return Boolean(user.quests[questId]?.completed);
 	}
 
-        async completeQuest(userId: number, questId: QuestId, metadata?: string): Promise<UserRecord> {
+        async completeQuest(userId: number, questId: QuestId, metadata?: string): Promise<QuestCompletionResult> {
                 const user = await this.userRepository.getOrCreate(userId);
                 const alreadyCompleted = Boolean(user.quests[questId]?.completed);
                 const questCompletedUser = await this.userRepository.completeQuest(userId, questId, metadata);
 
                 if (alreadyCompleted) {
-                        return questCompletedUser;
+                        return { user: questCompletedUser };
                 }
 
                 let finalUser = questCompletedUser;
@@ -117,17 +122,17 @@ export class QuestService {
 		return user.captchaPassed && hasMandatoryQuests;
 	}
 
-	async markTelegramChannel(userId: number): Promise<UserRecord> {
-		return this.completeQuest(userId, "telegram_channel");
-	}
+        async markTelegramChannel(userId: number): Promise<QuestCompletionResult> {
+                return this.completeQuest(userId, "telegram_channel");
+        }
 
-	async markTelegramChat(userId: number): Promise<UserRecord> {
-		return this.completeQuest(userId, "telegram_chat");
-	}
+        async markTelegramChat(userId: number): Promise<QuestCompletionResult> {
+                return this.completeQuest(userId, "telegram_chat");
+        }
 
-	async markDiscordMembership(userId: number, metadata?: string): Promise<UserRecord> {
-		return this.completeQuest(userId, "discord_join", metadata);
-	}
+        async markDiscordMembership(userId: number, metadata?: string): Promise<QuestCompletionResult> {
+                return this.completeQuest(userId, "discord_join", metadata);
+        }
 
         async countEligibleParticipants(): Promise<number> {
                 return this.userRepository.countEligibleUsers(this.mandatoryQuestIds);
@@ -141,17 +146,25 @@ export class QuestService {
                 return this.userRepository.getUserRank(userId);
         }
 
-        private async evaluateReferralProgress(user: UserRecord): Promise<UserRecord> {
+        private async evaluateReferralProgress(user: UserRecord): Promise<QuestCompletionResult> {
                 if (!user.referredBy || user.referralBonusClaimed) {
-                        return user;
+                        return { user };
                 }
 
                 const hasCompletedQuest = Object.values(user.quests ?? {}).some((entry) => entry?.completed);
                 if (!hasCompletedQuest) {
-                        return user;
+                        return { user };
                 }
 
-                await this.userRepository.awardReferralBonus(user.referredBy, user.userId, REFERRAL_BONUS_POINTS);
-                return this.userRepository.markReferralBonusClaimed(user.userId);
+                const referrer = await this.userRepository.awardReferralBonus(
+                        user.referredBy,
+                        user.userId,
+                        REFERRAL_BONUS_POINTS,
+                );
+                const updatedUser = await this.userRepository.markReferralBonusClaimed(user.userId);
+                if (referrer) {
+                        return { user: updatedUser, referralRewardedReferrerId: referrer.userId };
+                }
+                return { user: updatedUser };
         }
 }
