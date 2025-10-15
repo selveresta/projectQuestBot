@@ -39,9 +39,9 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			url: discordInviteUrl || undefined,
 			cta: discordInviteUrl ? "Open Discord" : undefined,
 		},
-		{
-			id: "x_follow",
-			title: "Follow on X (Twitter)",
+                {
+                        id: "x_follow",
+                        title: "Follow on X (Twitter)",
 			description: `
 <b>🐦 X — verification steps</b>
 
@@ -65,10 +65,20 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			phase: "stub",
 			url: xProfileUrl || undefined,
 			cta: xProfileUrl ? "Open X profile" : undefined,
-		},
-		{
-			id: "instagram_follow",
-			title: "Follow on Instagram",
+                },
+                {
+                        id: "x_like",
+                        title: "Like the latest X post",
+                        description: "Support the campaign by liking our highlighted post on X.",
+                        mandatory: false,
+                        type: "social_engagement",
+                        phase: "stub",
+                        url: xProfileUrl || undefined,
+                        cta: xProfileUrl ? "Open X profile" : undefined,
+                },
+                {
+                        id: "instagram_follow",
+                        title: "Follow on Instagram",
 			description: `
 <b>📸 Instagram — verification steps</b>
 
@@ -91,10 +101,20 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			phase: "stub",
 			url: instagramProfileUrl || undefined,
 			cta: instagramProfileUrl ? "Open Instagram" : undefined,
-		},
-		{
-			id: "website_visit",
-			title: "Visit the website",
+                },
+                {
+                        id: "telegram_like",
+                        title: "Like the pinned Telegram post",
+                        description: "React to the pinned announcement in our Telegram channel to show your support.",
+                        mandatory: false,
+                        type: "social_engagement",
+                        phase: telegram.channelId ? "live" : "stub",
+                        url: telegram.channelUrl || undefined,
+                        cta: telegram.channelUrl ? "Open Telegram channel" : undefined,
+                },
+                {
+                        id: "website_visit",
+                        title: "Visit the website",
 			description: "Explore the official website to learn more about the project vision.",
 			mandatory: true,
 			type: "website_visit",
@@ -111,14 +131,33 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			phase: "live",
 			cta: "Submit email",
 		},
-		{
-			id: "wallet_submit",
-			title: "Submit your EVM wallet",
-			description: "Provide an EVM-compatible wallet to receive rewards.",
-			mandatory: true,
-			type: "wallet_collection",
-			phase: "live",
-			cta: "Submit wallet",
-		},
-	];
+                {
+                        id: "wallet_submit",
+                        title: "Submit your EVM wallet",
+                        description: "Provide an EVM-compatible wallet to receive rewards.",
+                        mandatory: true,
+                        type: "wallet_collection",
+                        phase: "live",
+                        cta: "Submit wallet",
+                },
+                {
+                        id: "sol_wallet_submit",
+                        title: "Submit your Solana wallet",
+                        description: "Share a Solana wallet address so we know where to send SOL-based rewards.",
+                        mandatory: false,
+                        type: "sol_wallet_collection",
+                        phase: "live",
+                        cta: "Submit SOL wallet",
+                },
+                {
+                        id: "discord_like",
+                        title: "Engage in Discord",
+                        description: "Drop a reaction on the featured announcement inside our Discord server.",
+                        mandatory: false,
+                        type: "social_engagement",
+                        phase: discord.botToken && discord.guildId ? ("live" as const) : ("stub" as const),
+                        url: discordInviteUrl || undefined,
+                        cta: discordInviteUrl ? "Open Discord" : undefined,
+                },
+        ];
 }

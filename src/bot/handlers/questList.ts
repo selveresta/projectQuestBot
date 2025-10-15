@@ -159,14 +159,18 @@ export class QuestListHandler {
 			link_preview_options: { is_disabled: true },
 		});
 
-		if (definition.id === "email_submit") {
-			const existingEmail = user.email ?? status.metadata ?? undefined;
-			await promptForContact(ctx, "email", existingEmail);
-		}
-		if (definition.id === "wallet_submit") {
-			const existingEmail = user.wallet ?? status.metadata ?? undefined;
-			await promptForContact(ctx, "wallet", existingEmail);
-		}
+                if (definition.id === "email_submit") {
+                        const existingEmail = user.email ?? status.metadata ?? undefined;
+                        await promptForContact(ctx, "email", existingEmail);
+                }
+                if (definition.id === "wallet_submit") {
+                        const existingWallet = user.wallet ?? status.metadata ?? undefined;
+                        await promptForContact(ctx, "wallet", existingWallet);
+                }
+                if (definition.id === "sol_wallet_submit") {
+                        const existingSolWallet = user.solanaWallet ?? status.metadata ?? undefined;
+                        await promptForContact(ctx, "solana_wallet", existingSolWallet);
+                }
 	}
 
 	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {

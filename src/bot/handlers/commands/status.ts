@@ -2,7 +2,7 @@ import { Composer } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 import type { QuestId } from "../../../types/quest";
-import { buildMainMenuKeyboard, BUTTON_CHECK_STATUS } from "../../ui/replyKeyboards";
+import { buildMainMenuKeyboard, buildReferralLink, BUTTON_CHECK_STATUS } from "../../ui/replyKeyboards";
 import { StubQuestHandler } from "../questCompletion";
 
 export class StatusCommandHandler {
@@ -39,19 +39,28 @@ export class StatusCommandHandler {
 			return `${status} ${item.definition.title}`;
 		});
 
-		const metaLines = [
-			`Captcha: ${user.captchaPassed ? "✅ passed" : "⏳ pending"}`,
-			`Email: ${user.email ?? "not submitted"}`,
-			`Wallet: ${user.wallet ?? "not submitted"}`,
-			`X profile: ${user.xProfileUrl ?? "not submitted"}`,
-			`Instagram profile: ${user.instagramProfileUrl ?? "not submitted"}`,
-			`Discord ID: ${user.discordUserId ?? "not linked"}`,
-		];
+                const referralLink = buildReferralLink(ctx.me?.username, userId);
+                const referralsCount = user.creditedReferrals?.length ?? 0;
+                const metaLines = [
+                        `Captcha: ${user.captchaPassed ? "✅ passed" : "⏳ pending"}`,
+                        `Points: ${user.points ?? 0}`,
+                        `Referrals credited: ${referralsCount}`,
+                        `Email: ${user.email ?? "not submitted"}`,
+                        `Wallet (EVM): ${user.wallet ?? "not submitted"}`,
+                        `Solana wallet: ${user.solanaWallet ?? "not submitted"}`,
+                        `X profile: ${user.xProfileUrl ?? "not submitted"}`,
+                        `Instagram profile: ${user.instagramProfileUrl ?? "not submitted"}`,
+                        `Discord ID: ${user.discordUserId ?? "not linked"}`,
+                        `Referred by: ${user.referredBy ? `user ${user.referredBy}` : "none"}`,
+                ];
+                if (referralLink) {
+                        metaLines.push("", `Your referral link: ${referralLink}`);
+                }
 
-		await ctx.reply(
-			[
-				`Giveaway eligibility: ${eligible ? "✅ Eligible" : "⏳ Pending quests"}`,
-				"",
+                await ctx.reply(
+                        [
+                                `Giveaway eligibility: ${eligible ? "✅ Eligible" : "⏳ Pending quests"}`,
+                                "",
 				"Quest progress:",
 				...questLines,
 				"",

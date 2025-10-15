@@ -9,6 +9,7 @@ import { ContactHandler } from "./contact";
 import { StubQuestHandler } from "./questCompletion";
 import { QuestListHandler } from "./questList";
 import { SocialProfileHandler } from "./socialProfiles";
+import { LeaderboardHandler } from "./leaderboard";
 
 export class BotHandlerRegistry {
 	build(): Composer<BotContext> {
@@ -19,17 +20,19 @@ export class BotHandlerRegistry {
 		const statusCommandHandler = new StatusCommandHandler(stubQuestHandler);
 		const adminCommandHandler = new AdminCommandHandler();
 		const contactHandler = new ContactHandler();
-		const questListHandler = new QuestListHandler();
-		const socialProfileHandler = new SocialProfileHandler();
+                const questListHandler = new QuestListHandler();
+                const socialProfileHandler = new SocialProfileHandler();
+                const leaderboardHandler = new LeaderboardHandler();
 
-		captchaHandler.register(composer);
-		startCommandHandler.register(composer);
-		statusCommandHandler.register(composer);
-		adminCommandHandler.register(composer);
-		contactHandler.register(composer);
-		questListHandler.register(composer);
-		socialProfileHandler.register(composer);
-		stubQuestHandler.register(composer);
+                captchaHandler.register(composer);
+                startCommandHandler.register(composer);
+                statusCommandHandler.register(composer);
+                adminCommandHandler.register(composer);
+                contactHandler.register(composer);
+                questListHandler.register(composer);
+                socialProfileHandler.register(composer);
+                leaderboardHandler.register(composer);
+                stubQuestHandler.register(composer);
 
 		composer.command("help", this.handleHelpCommand);
 		return composer;
