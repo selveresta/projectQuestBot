@@ -1,4 +1,4 @@
-import { Composer, InlineKeyboard, Keyboard } from "grammy";
+import { Composer, InlineKeyboard } from "grammy";
 
 import type { BotContext } from "../../types/context";
 import type { QuestId } from "../../types/quest";
@@ -21,6 +21,7 @@ export class QuestListHandler {
 		composer.hears(BUTTON_QUEST_LIST, this.handleOpenList.bind(this));
 		composer.hears(BUTTON_BACK_TO_MENU, this.handleBackToMenu.bind(this));
 		composer.on("message:text", this.handleQuestSelection.bind(this));
+		composer.callbackQuery(/^quest-open:(.+)$/, this.handleQuestOpen.bind(this));
 		composer.callbackQuery(/^quest-check:(.+)$/, this.handleCheckRequest.bind(this));
 	}
 
@@ -67,15 +68,40 @@ export class QuestListHandler {
 		}
 
 		const user = await questService.getUser(userId);
-		const existingSocialUrl = isSocialQuestId(target.definition.id) ? getExistingSocialUrl(user, target.definition.id) : undefined;
+		const existingSocialUrl = isSocialQuestId(target.definition.id)
+			? getExistingSocialUrl(user, target.definition.id)
+			: undefined;
 		if (!existingSocialUrl && isSocialQuestId(target.definition.id)) {
-			await ctx.reply("📸 Share your profile link. \n Returm to main menu and use Set Instagram\\X\\Discord button", {
-				reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-			});
+			await ctx.reply("📸 Share your profile link. \n Return to the main menu and use Set Instagram/X/Discord button.");
 			return;
-		} else {
-			await this.sendQuestDetail(ctx, userId, target);
 		}
+
+		await this.sendQuestDetail(ctx, userId, target);
+	}
+
+	private async handleQuestOpen(ctx: BotContext): Promise<void> {
+		const questId = ctx.match?.[1] as QuestId | undefined;
+		if (!questId) {
+			await ctx.answerCallbackQuery({ text: "Unknown quest." });
+			return;
+		}
+
+		const userId = ctx.from?.id;
+		if (!userId) {
+			await ctx.answerCallbackQuery({ text: "Telegram user required.", show_alert: true });
+			return;
+		}
+
+		const questService = ctx.services.questService;
+		const statuses = await questService.buildQuestStatus(userId);
+		const target = statuses.find((status) => status.definition.id === questId);
+		if (!target || !this.shouldDisplay(target)) {
+			await ctx.answerCallbackQuery({ text: "Quest not available.", show_alert: true });
+			return;
+		}
+
+		await ctx.answerCallbackQuery({ text: target.definition.title });
+		await this.sendQuestDetail(ctx, userId, target);
 	}
 
 	private async sendQuestList(ctx: BotContext, userId: number): Promise<void> {
@@ -176,21 +202,15 @@ export class QuestListHandler {
 		}
 	}
 
-	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
-		const keyboard = new Keyboard();
+	private buildQuestListKeyboard(statuses: QuestStatus[]): InlineKeyboard {
+		const keyboard = new InlineKeyboard();
 		statuses.forEach((status, index) => {
-			keyboard.text(this.questButtonLabel(status));
-			if ((index + 1) % 2 === 0) {
+			keyboard.text(this.questButtonLabel(status), `quest-open:${status.definition.id}`);
+			if ((index + 1) % 2 === 0 && index !== statuses.length - 1) {
 				keyboard.row();
 			}
 		});
-
-		keyboard.row();
-		keyboard.text(BUTTON_BACK_TO_MENU);
-		keyboard.row();
-		keyboard.text(BUTTON_CHECK_STATUS);
-
-		return keyboard.resized().persistent();
+		return keyboard;
 	}
 
 	private buildQuestDetailKeyboard(status: QuestStatus, existingSocialUrl?: string): InlineKeyboard {
