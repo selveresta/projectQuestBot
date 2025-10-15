@@ -3,22 +3,22 @@ import { Composer, InlineKeyboard } from "grammy";
 import type { BotContext } from "../../types/context";
 import type { QuestDefinition, QuestId } from "../../types/quest";
 import {
-        getExistingSocialUrl,
-        getSocialInvalidMessage,
-        getSocialSuccessMessage,
-        identifySocialQuestFromMessage,
-        isSocialQuestId,
-        isValidSocialProfileInput,
-        normalizeSocialProfileInput,
-        promptForSocialProfile,
-        saveSocialProfile,
-        getSocialPlatform,
-        getSocialTargetUrl,
-        ensureSocialBaseline,
-        getSocialBaseline,
-        isBaselinePending,
-        clearSocialBaseline,
-        clearPendingSocialQuest,
+	getExistingSocialUrl,
+	getSocialInvalidMessage,
+	getSocialSuccessMessage,
+	identifySocialQuestFromMessage,
+	isSocialQuestId,
+	isValidSocialProfileInput,
+	normalizeSocialProfileInput,
+	promptForSocialProfile,
+	saveSocialProfile,
+	getSocialPlatform,
+	getSocialTargetUrl,
+	ensureSocialBaseline,
+	getSocialBaseline,
+	isBaselinePending,
+	clearSocialBaseline,
+	clearPendingSocialQuest,
 } from "../helpers/socialQuests";
 import { notifyReferralBonus } from "../helpers/referrals";
 import { verifySocialFollow, DEFAULT_WAIT_MS } from "../../services/socialVerification";
@@ -35,9 +35,7 @@ export class StubQuestHandler {
 			return undefined;
 		}
 
-		const stubDefinitions = definitions.filter(
-			(quest) => quest.phase === "stub" && pendingQuestIds.includes(quest.id)
-		);
+		const stubDefinitions = definitions.filter((quest) => quest.phase === "stub" && pendingQuestIds.includes(quest.id));
 
 		if (stubDefinitions.length === 0) {
 			return undefined;
@@ -83,9 +81,7 @@ export class StubQuestHandler {
 			const user = await questService.getUser(userId);
 			const existing = getExistingSocialUrl(user, questId);
 			await ctx.answerCallbackQuery({
-				text: existing
-					? "Reply with your profile link to update it."
-					: "Reply with your profile link so we can record it.",
+				text: existing ? "Reply with your profile link to update it." : "Reply with your profile link so we can record it.",
 				show_alert: false,
 			});
 			await promptForSocialProfile(ctx, questId, existing);
@@ -107,12 +103,12 @@ export class StubQuestHandler {
 			return;
 		}
 
-                const completion = await questService.completeQuest(userId, questId);
-                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-                await ctx.answerCallbackQuery({
-                        text: `${quest.title} marked as complete.`,
-                        show_alert: false,
-                });
+		const completion = await questService.completeQuest(userId, questId);
+		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+		await ctx.answerCallbackQuery({
+			text: `${quest.title} marked as complete.`,
+			show_alert: false,
+		});
 
 		await ctx.editMessageText("Quest recorded. Run /status to check your updated progress.");
 	}
@@ -217,12 +213,12 @@ export class StubQuestHandler {
 				targetBefore: result.targetBefore,
 				targetAfter: result.targetAfter,
 			});
-                        const completion = await questService.completeQuest(userId, questId, metadata);
-                        await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-                        await ctx.api.editMessageText(
-                                pendingMessage.chat.id,
-                                pendingMessage.message_id,
-                                "✅ Follow verified! The quest has been marked as complete."
+			const completion = await questService.completeQuest(userId, questId, metadata);
+			await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+			await ctx.api.editMessageText(
+				pendingMessage.chat.id,
+				pendingMessage.message_id,
+				"✅ Follow verified! The quest has been marked as complete."
 			);
 		} catch (error) {
 			console.error("[socialVerification] failed", {
@@ -233,10 +229,7 @@ export class StubQuestHandler {
 			await ctx.api.editMessageText(
 				pendingMessage.chat.id,
 				pendingMessage.message_id,
-				[
-					"❌ Verification failed due to an unexpected error.",
-					"Please try again later.",
-				].join("\n")
+				["❌ Verification failed due to an unexpected error.", "Please try again later."].join("\n")
 			);
 		} finally {
 			await clearSocialBaseline(ctx, userId, questId);

@@ -28,30 +28,30 @@ export class CaptchaHandler {
 			return;
 		}
 
-                const repo = ctx.services.userRepository;
-                const captcha = ctx.services.captchaService;
-                const existingUser = await repo.get(userId);
+		const repo = ctx.services.userRepository;
+		const captcha = ctx.services.captchaService;
+		const existingUser = await repo.get(userId);
 
-                if (!existingUser || !existingUser.pendingCaptcha) {
-                        await this.regenerateChallenge(ctx, userId);
-                        return;
-                }
+		if (!existingUser || !existingUser.pendingCaptcha) {
+			await this.regenerateChallenge(ctx, userId);
+			return;
+		}
 
-                if (captcha.isExpired(existingUser.pendingCaptcha)) {
-                        await ctx.answerCallbackQuery({ text: "Captcha expired. Try again." });
-                        await this.regenerateChallenge(ctx, userId);
-                        return;
-                }
+		if (captcha.isExpired(existingUser.pendingCaptcha)) {
+			await ctx.answerCallbackQuery({ text: "Captcha expired. Try again." });
+			await this.regenerateChallenge(ctx, userId);
+			return;
+		}
 
-                const isCorrect = captcha.verify(existingUser.pendingCaptcha, selection);
+		const isCorrect = captcha.verify(existingUser.pendingCaptcha, selection);
 		if (!isCorrect) {
 			await this.handleIncorrectAttempt(ctx, userId);
 			return;
 		}
 
-                const updatedUser = await repo.markCaptchaPassed(userId);
-                await ctx.editMessageText("✅ You passed the human check!");
-                await this.showMainMenu(ctx, updatedUser);
+		const updatedUser = await repo.markCaptchaPassed(userId);
+		await ctx.editMessageText("✅ You passed the human check!");
+		await this.showMainMenu(ctx, updatedUser);
 	}
 
 	private async regenerateChallenge(ctx: BotContext, userId: number): Promise<void> {
@@ -85,11 +85,11 @@ export class CaptchaHandler {
 		}
 	}
 
-        private async showMainMenu(ctx: BotContext, _user: UserRecord): Promise<void> {
-                const message = buildWelcomeAnnouncement();
-                await ctx.reply(message, {
-                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-                        link_preview_options: { is_disabled: true },
-                });
-        }
+	private async showMainMenu(ctx: BotContext, _user: UserRecord): Promise<void> {
+		const message = buildWelcomeAnnouncement();
+		await ctx.reply(message, {
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+			link_preview_options: { is_disabled: true },
+		});
+	}
 }

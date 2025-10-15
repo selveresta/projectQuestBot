@@ -4,10 +4,8 @@ import type { BotContext } from "../../types/context";
 import { notifyReferralBonus } from "../helpers/referrals";
 import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
 
-export const EMAIL_PROMPT =
-        "✉️ Please reply to this message with the email you want to use for the giveaway.";
-const WALLET_PROMPT =
-        "💼 Please reply to this message with your EVM wallet address (0x…).";
+export const EMAIL_PROMPT = "✉️ Please reply to this message with the email you want to use for the giveaway.";
+const WALLET_PROMPT = "💼 Please reply to this message with your EVM wallet address (0x…).";
 type PendingContactType = "email" | "wallet";
 const CONTACT_PENDING_TTL_SECONDS = 600;
 
@@ -24,15 +22,15 @@ async function setPendingContact(ctx: BotContext, type: PendingContactType): Pro
 }
 
 async function getPendingContact(ctx: BotContext): Promise<PendingContactType | undefined> {
-        const userId = ctx.from?.id;
-        if (!userId) {
-                return undefined;
-        }
-        const raw = await ctx.services.redis.get(pendingContactKey(userId));
-        if (raw === "email" || raw === "wallet") {
-                return raw;
-        }
-        return undefined;
+	const userId = ctx.from?.id;
+	if (!userId) {
+		return undefined;
+	}
+	const raw = await ctx.services.redis.get(pendingContactKey(userId));
+	if (raw === "email" || raw === "wallet") {
+		return raw;
+	}
+	return undefined;
 }
 
 async function clearPendingContact(ctx: BotContext, type?: PendingContactType): Promise<void> {
@@ -51,20 +49,13 @@ async function clearPendingContact(ctx: BotContext, type?: PendingContactType): 
 }
 
 function buildPromptText(type: PendingContactType, existing?: string): string {
-        const base = type === "email" ? EMAIL_PROMPT : WALLET_PROMPT;
-        const label =
-                type === "email"
-                        ? "email"
-                        : "wallet";
-        const suffix = existing && existing.trim().length > 0 ? `Current ${label}: ${existing}` : undefined;
-        return [base, suffix].filter(Boolean).join("\n\n");
+	const base = type === "email" ? EMAIL_PROMPT : WALLET_PROMPT;
+	const label = type === "email" ? "email" : "wallet";
+	const suffix = existing && existing.trim().length > 0 ? `Current ${label}: ${existing}` : undefined;
+	return [base, suffix].filter(Boolean).join("\n\n");
 }
 
-export async function promptForContact(
-	ctx: BotContext,
-	type: PendingContactType,
-	existing?: string
-): Promise<void> {
+export async function promptForContact(ctx: BotContext, type: PendingContactType, existing?: string): Promise<void> {
 	if (!ctx.from) {
 		return;
 	}
@@ -89,11 +80,11 @@ export class ContactHandler {
 
 		const userId = ctx.from.id;
 		const text = ctx.message?.text?.trim() ?? "";
-                const pending = await getPendingContact(ctx);
+		const pending = await getPendingContact(ctx);
 
-                const isEmailContext = this.isReplyToPrompt(ctx, EMAIL_PROMPT) || pending === "email";
-                if (isEmailContext) {
-                        if (pending === "email" && text.startsWith("/")) {
+		const isEmailContext = this.isReplyToPrompt(ctx, EMAIL_PROMPT) || pending === "email";
+		if (isEmailContext) {
+			if (pending === "email" && text.startsWith("/")) {
 				await next();
 				return;
 			}
@@ -101,18 +92,18 @@ export class ContactHandler {
 			return;
 		}
 
-                const isWalletContext = this.isReplyToPrompt(ctx, WALLET_PROMPT) || pending === "wallet";
-                if (isWalletContext) {
-                        if (pending === "wallet" && text.startsWith("/")) {
-                                await next();
-                                return;
-                        }
-                        await this.processWallet(ctx, userId, text);
-                        return;
-                }
+		const isWalletContext = this.isReplyToPrompt(ctx, WALLET_PROMPT) || pending === "wallet";
+		if (isWalletContext) {
+			if (pending === "wallet" && text.startsWith("/")) {
+				await next();
+				return;
+			}
+			await this.processWallet(ctx, userId, text);
+			return;
+		}
 
-                await next();
-        }
+		await next();
+	}
 
 	private async processEmail(ctx: BotContext, userId: number, email: string): Promise<void> {
 		if (!this.isValidEmail(email)) {
@@ -121,32 +112,30 @@ export class ContactHandler {
 		}
 
 		await ctx.services.questService.updateContact(userId, { email });
-                const completion = await ctx.services.questService.completeQuest(userId, "email_submit", email);
-                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-                await clearPendingContact(ctx, "email");
-                await ctx.reply("✅ Email saved. You can update it at any time via the menu.", {
-                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-                });
+		const completion = await ctx.services.questService.completeQuest(userId, "email_submit", email);
+		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+		await clearPendingContact(ctx, "email");
+		await ctx.reply("✅ Email saved. You can update it at any time via the menu.", {
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+		});
 	}
 
-        private async processWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
-                if (!this.isValidWallet(wallet)) {
-                        await ctx.reply(
-                                "The wallet should be a 0x… hexadecimal address. Please double-check and resend."
-                        );
+	private async processWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
+		if (!this.isValidWallet(wallet)) {
+			await ctx.reply("The wallet should be a 0x… hexadecimal address. Please double-check and resend.");
 			return;
 		}
 
-                await ctx.services.questService.updateContact(userId, { wallet });
-                const completion = await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
-                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-                await clearPendingContact(ctx, "wallet");
-                await ctx.reply("✅ Wallet saved. Run /status to make sure everything looks good.", {
-                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-                });
-        }
+		await ctx.services.questService.updateContact(userId, { wallet });
+		const completion = await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
+		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+		await clearPendingContact(ctx, "wallet");
+		await ctx.reply("✅ Wallet saved. Run /status to make sure everything looks good.", {
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+		});
+	}
 
-        private isReplyToPrompt(ctx: BotContext, prompt: string): boolean {
+	private isReplyToPrompt(ctx: BotContext, prompt: string): boolean {
 		const reply = ctx.message?.reply_to_message;
 		if (!reply?.text) {
 			return false;
@@ -157,11 +146,11 @@ export class ContactHandler {
 		return reply.text.startsWith(prompt);
 	}
 
-        private isValidEmail(input: string): boolean {
-                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
-        }
+	private isValidEmail(input: string): boolean {
+		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
+	}
 
-        private isValidWallet(input: string): boolean {
-                return /^0x[a-fA-F0-9]{40}$/.test(input);
-        }
+	private isValidWallet(input: string): boolean {
+		return /^0x[a-fA-F0-9]{40}$/.test(input);
+	}
 }

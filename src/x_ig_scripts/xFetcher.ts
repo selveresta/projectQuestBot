@@ -7,8 +7,7 @@ import type { SocialCounts } from "../services/socialVerification";
 
 const X_COOKIES_PATH = path.join(__dirname, "x_cookies.json");
 const X_USER_AGENT =
-	process.env.X_USER_AGENT ||
-	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+	process.env.X_USER_AGENT || "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 type Counts = { followers: number | null; following: number | null };
 
@@ -168,4 +167,3 @@ export async function fetchXCounts(url: string): Promise<SocialCounts | undefine
 		return undefined;
 	}
 }
-

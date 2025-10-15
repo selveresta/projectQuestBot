@@ -6,11 +6,11 @@ import type { QuestStatus } from "../../services/questService";
 import { getExistingSocialUrl, isSocialQuestId, ensureSocialBaseline } from "../helpers/socialQuests";
 import { TelegramMembershipVerifier } from "../helpers/membership";
 import {
-        BUTTON_BACK_TO_MENU,
-        BUTTON_CHECK_STATUS,
-        BUTTON_QUEST_LIST,
-        MENU_PLACEHOLDER_TEXT,
-        buildMainMenuKeyboard,
+	BUTTON_BACK_TO_MENU,
+	BUTTON_CHECK_STATUS,
+	BUTTON_QUEST_LIST,
+	MENU_PLACEHOLDER_TEXT,
+	buildMainMenuKeyboard,
 } from "../ui/replyKeyboards";
 import { promptForContact } from "./contact";
 
@@ -33,12 +33,12 @@ export class QuestListHandler {
 		await this.sendQuestList(ctx, ctx.from.id);
 	}
 
-        private async handleBackToMenu(ctx: BotContext): Promise<void> {
-                await ctx.reply(MENU_PLACEHOLDER_TEXT, {
-                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-                        link_preview_options: { is_disabled: true },
-                });
-        }
+	private async handleBackToMenu(ctx: BotContext): Promise<void> {
+		await ctx.reply(MENU_PLACEHOLDER_TEXT, {
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+			link_preview_options: { is_disabled: true },
+		});
+	}
 
 	private async handleQuestSelection(ctx: BotContext, next: () => Promise<void>): Promise<void> {
 		if (!ctx.from) {
@@ -121,7 +121,7 @@ export class QuestListHandler {
 		}
 
 		const lines = [
-			`${status.completed ? "✅" : "⏳"} ${definition.title}`,
+			`${status.completed ? "✅" : "⏳"} <b>${definition.title}</b>`,
 			"",
 			definition.description,
 			"",
@@ -166,15 +166,15 @@ export class QuestListHandler {
 			link_preview_options: { is_disabled: true },
 		});
 
-                if (definition.id === "email_submit") {
-                        const existingEmail = user.email ?? status.metadata ?? undefined;
-                        await promptForContact(ctx, "email", existingEmail);
-                }
-                if (definition.id === "wallet_submit") {
-                        const existingWallet = user.wallet ?? status.metadata ?? undefined;
-                        await promptForContact(ctx, "wallet", existingWallet);
-                }
-        }
+		if (definition.id === "email_submit") {
+			const existingEmail = user.email ?? status.metadata ?? undefined;
+			await promptForContact(ctx, "email", existingEmail);
+		}
+		if (definition.id === "wallet_submit") {
+			const existingWallet = user.wallet ?? status.metadata ?? undefined;
+			await promptForContact(ctx, "wallet", existingWallet);
+		}
+	}
 
 	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
 		const keyboard = new Keyboard();

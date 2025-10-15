@@ -42,4 +42,3 @@ main(urls).catch(async (error) => {
 	await closeSharedBrowser();
 	process.exit(1);
 });
-

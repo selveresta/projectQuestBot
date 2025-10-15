@@ -12,7 +12,8 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 		{
 			id: "telegram_channel",
 			title: "Subscribe to the Telegram channel",
-			description: "Join the official Trady Quest announcement channel to receive the latest updates.",
+			description:
+				"Join the official Trady Telegram Channel to stay updated on all project news, product releases, and major announcements.",
 			mandatory: true,
 			type: "telegram_channel",
 			phase: telegram.channelId ? "live" : "stub",
@@ -22,7 +23,8 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 		{
 			id: "telegram_chat",
 			title: "Join the Telegram community chat",
-			description: "Participate in the community chat to stay connected with other members.",
+			description:
+				"Join the official Trady Community Chat to connect with other traders, share insights, and stay updated on everything happening in the ecosystem.",
 			mandatory: true,
 			type: "telegram_chat",
 			phase: telegram.chatId ? "live" : "stub",
@@ -52,26 +54,15 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 <b>🔁 Already following?</b>
 • Unfollow the profile.  
 • Wait 5–10 seconds.  
-• Click on Quest Follow on X(Twitter).
-• Follow again.  
+• Tap the quest again: Follow on X(Twitter).
+• Follow once more
 • Tap <b>“✅ Verify”</b>.
 
 <b>ℹ️ Notes</b>  
 • Make sure you’re setup the correct X account.  
-• Allow a few seconds for the follow to sync before retrying verification.
-`,
+• Wait a few seconds for the sync before retrying verification`,
 			mandatory: true,
 			type: "social_follow",
-			phase: "stub",
-			url: xProfileUrl || undefined,
-			cta: xProfileUrl ? "Open X profile" : undefined,
-		},
-		{
-			id: "x_like",
-			title: "Like the latest X post",
-			description: "Support the campaign by liking our highlighted post on X.",
-			mandatory: false,
-			type: "social_engagement",
 			phase: "stub",
 			url: xProfileUrl || undefined,
 			cta: xProfileUrl ? "Open X profile" : undefined,
@@ -89,23 +80,23 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 <b>🔁 Already following?</b>
 • Unfollow the page.
 • Wait 5–10 seconds.
-• Click on Quest Follow on Instagram.
-• Follow again.
+• Tap the quest again: Follow on Instagram.
+• Follow once more
 • Tap <b>“✅ Verify</b>.
 
 <b>ℹ️ Notes</b>
-• Make sure you’re following from the <b>same account</b> you intend to verify.  
-• Sometimes verification takes a few seconds to sync—try again if it doesn’t pass immediately.`,
+• Make sure you’re following from the same account you want to verify
+• Verification may take a few seconds to sync — retry if it doesn’t pass immediately`,
 			mandatory: true,
 			type: "social_follow",
 			phase: "stub",
 			url: instagramProfileUrl || undefined,
 			cta: instagramProfileUrl ? "Open Instagram" : undefined,
-                },
-                {
-                        id: "website_visit",
-                        title: "Visit the website",
-			description: "Explore the official website to learn more about the project vision.",
+		},
+		{
+			id: "website_visit",
+			title: "Visit the website",
+			description: "Explore the official Trady website to learn more about the platform, features, and upcoming releases.",
 			mandatory: true,
 			type: "website_visit",
 			phase: "stub",
@@ -115,20 +106,20 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 		{
 			id: "email_submit",
 			title: "Drop your email",
-			description: "Submit an email address so we can reach you if you win.",
+			description: "Submit your email address so we can contact you if you win.",
 			mandatory: true,
 			type: "email_collection",
 			phase: "live",
 			cta: "Submit email",
 		},
-                {
-                        id: "wallet_submit",
-                        title: "Submit your EVM wallet",
-                        description: "Provide an EVM-compatible wallet to receive rewards.",
-                        mandatory: true,
-                        type: "wallet_collection",
-                        phase: "live",
-                        cta: "Submit wallet",
-                },
-        ];
+		{
+			id: "wallet_submit",
+			title: "Submit your EVM wallet",
+			description: "Provide an EVM-compatible wallet to receive rewards.",
+			mandatory: true,
+			type: "wallet_collection",
+			phase: "live",
+			cta: "Submit wallet",
+		},
+	];
 }

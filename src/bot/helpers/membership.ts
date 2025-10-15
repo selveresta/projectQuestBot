@@ -40,11 +40,11 @@ export class TelegramMembershipVerifier {
 				return false;
 			}
 
-                        if (!alreadyCompleted) {
-                                const completion = await questService.completeQuest(userId, descriptor.questId);
-                                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-                                await ctx.reply(`✅ ${descriptor.successLabel} confirmed.`);
-                        }
+			if (!alreadyCompleted) {
+				const completion = await questService.completeQuest(userId, descriptor.questId);
+				await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+				await ctx.reply(`✅ ${descriptor.successLabel} confirmed.`);
+			}
 
 			return true;
 		} catch (error) {
