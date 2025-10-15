@@ -5,7 +5,7 @@ import type { AppConfig } from "../../config";
 export const BUTTON_QUEST_LIST = "🗂 Quest list";
 export const BUTTON_SET_INSTAGRAM = "📸 Set Instagram profile URL";
 export const BUTTON_SET_X = "🔗 Set X profile URL";
-export const BUTTON_SET_DISCORD = "🔗 Set Discord profile ID";
+// export const BUTTON_SET_DISCORD = "🔗 Set Discord profile ID";
 export const BUTTON_CHECK_STATUS = "📊 Check status";
 export const BUTTON_ABOUT = "❔ About";
 export const BUTTON_BACK_TO_MENU = "⬅️ Back to menu";
@@ -51,9 +51,9 @@ export function buildMainMenuKeyboard(config?: AppConfig, adminId?: number): Key
 		socialButtons.push(BUTTON_SET_X);
 	}
 
-	if (!config || config.links.discordInviteUrl) {
-		socialButtons.push(BUTTON_SET_DISCORD);
-	}
+	// if (!config || config.links.discordInviteUrl) {
+	// 	socialButtons.push(BUTTON_SET_DISCORD);
+	// }
 
 	if (!config || (adminId && config.adminIds.includes(adminId))) {
 		socialButtons.push(BUTTON_ADMIN_PANEL);

@@ -192,6 +192,36 @@ export async function fetchInstagramCounts(url: string): Promise<SocialCounts | 
 			await page.setExtraHTTPHeaders({ "accept-language": "en-US,en;q=0.9" });
 			await page.setViewport({ width: 1280, height: 720 });
 
+			/** Request filtering: allow only what’s needed for IG GraphQL */
+			await page.setRequestInterception(true);
+
+			const IG_HOST_RE = /^https?:\/\/([a-zA-Z0-9-]+\.)?(instagram\.com|i\.instagram\.com)(\/|$)/i;
+
+			// Types are simple strings in Puppeteer: "document" | "script" | "xhr" | "fetch" | "image" | ...
+			const ALLOW_TYPES = new Set<string>(["document", "script", "xhr", "fetch"]);
+			const BLOCK_TYPES = new Set<string>(["image", "media", "font", "stylesheet", "websocket", "manifest", "ping"]);
+
+			const onRequest = (req: import("puppeteer").HTTPRequest) => {
+				const type = req.resourceType(); // string
+				const url = req.url();
+
+				// Always allow the main HTML
+				if (type === "document") return req.continue();
+
+				// Block heavy/unneeded resource types
+				if (BLOCK_TYPES.has(type)) return req.abort();
+
+				// First-party only
+				if (!IG_HOST_RE.test(url)) return req.abort();
+
+				// Allow only the types we need to get GraphQL JSON
+				if (ALLOW_TYPES.has(type)) return req.continue();
+
+				return req.abort();
+			};
+
+			page.on("request", onRequest);
+
 			const cookies = loadCookies();
 			if (cookies.length) {
 				try {
@@ -223,4 +253,3 @@ export async function fetchInstagramCounts(url: string): Promise<SocialCounts | 
 		return undefined;
 	}
 }
-

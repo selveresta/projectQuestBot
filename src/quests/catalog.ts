@@ -32,7 +32,7 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 		{
 			id: "discord_join",
 			title: "Join the Discord server",
-			description: "Join the official Discord server and verify your Telegram ID using the \\!verify command.",
+			description: "Join the official Discord server and verify your Telegram ID using the !verify command.",
 			mandatory: true,
 			type: "discord_membership",
 			phase: discord.botToken && discord.guildId ? ("live" as const) : ("stub" as const),

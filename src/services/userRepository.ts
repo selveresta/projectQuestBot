@@ -241,4 +241,6 @@ export class UserRepository {
 
 		return count;
 	}
+
+	async resetProgress(userId: number) {}
 }

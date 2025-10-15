@@ -59,7 +59,16 @@ export class QuestListHandler {
 			return;
 		}
 
-		await this.sendQuestDetail(ctx, userId, target);
+		const user = await questService.getUser(userId);
+		const existingSocialUrl = isSocialQuestId(target.definition.id) ? getExistingSocialUrl(user, target.definition.id) : undefined;
+		if (!existingSocialUrl && isSocialQuestId(target.definition.id)) {
+			await ctx.reply("📸 Share your profile link. \n Returm to main menu and use Set Instagram\\X\\Discord button", {
+				reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+			});
+			return;
+		} else {
+			await this.sendQuestDetail(ctx, userId, target);
+		}
 	}
 
 	private async sendQuestList(ctx: BotContext, userId: number): Promise<void> {
@@ -83,10 +92,17 @@ export class QuestListHandler {
 	}
 
 	private async sendQuestDetail(ctx: BotContext, userId: number, status: QuestStatus): Promise<void> {
+		if (status.completed) {
+			await ctx.reply("✅ Quest completed, let's start to complete other", {
+				reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+			});
+			return;
+		}
 		const questService = ctx.services.questService;
 		const { definition } = status;
 		const user = await questService.getUser(userId);
 		const existingSocialUrl = isSocialQuestId(definition.id) ? getExistingSocialUrl(user, definition.id) : undefined;
+
 		if (isSocialQuestId(definition.id) && existingSocialUrl) {
 			void ensureSocialBaseline(ctx, userId, definition.id, existingSocialUrl).catch((error) => {
 				console.error("[questList] failed to ensure social baseline", {
@@ -105,7 +121,7 @@ export class QuestListHandler {
 			status.completed ? `Status: Completed${status.completedAt ? ` at ${status.completedAt}` : ""}.` : "Status: Pending completion.",
 		];
 
-		if (existingSocialUrl) {
+		if (existingSocialUrl && definition.id !== "discord_join") {
 			lines.push(`Stored profile: ${existingSocialUrl}`);
 		} else if (status.metadata) {
 			lines.push(`Submission: ${status.metadata}`);
@@ -121,9 +137,9 @@ export class QuestListHandler {
 
 		if (definition.id === "discord_join") {
 			const inviteLink = ctx.config.links.discordInviteUrl;
-			if (user.discordUserId) {
-				lines.push("", `Linked Discord ID: ${user.discordUserId}`);
-			}
+			// if (user.discordUserId) {
+			// 	lines.push("", `Linked Discord ID: ${user.discordUserId}`);
+			// }
 			lines.push(
 				"",
 				"Discord verification steps:",
