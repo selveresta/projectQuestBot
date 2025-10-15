@@ -39,9 +39,9 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			url: discordInviteUrl || undefined,
 			cta: discordInviteUrl ? "Open Discord" : undefined,
 		},
-                {
-                        id: "x_follow",
-                        title: "Follow on X (Twitter)",
+		{
+			id: "x_follow",
+			title: "Follow on X (Twitter)",
 			description: `
 <b>🐦 X — verification steps</b>
 
@@ -65,20 +65,20 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			phase: "stub",
 			url: xProfileUrl || undefined,
 			cta: xProfileUrl ? "Open X profile" : undefined,
-                },
-                {
-                        id: "x_like",
-                        title: "Like the latest X post",
-                        description: "Support the campaign by liking our highlighted post on X.",
-                        mandatory: false,
-                        type: "social_engagement",
-                        phase: "stub",
-                        url: xProfileUrl || undefined,
-                        cta: xProfileUrl ? "Open X profile" : undefined,
-                },
-                {
-                        id: "instagram_follow",
-                        title: "Follow on Instagram",
+		},
+		{
+			id: "x_like",
+			title: "Like the latest X post",
+			description: "Support the campaign by liking our highlighted post on X.",
+			mandatory: false,
+			type: "social_engagement",
+			phase: "stub",
+			url: xProfileUrl || undefined,
+			cta: xProfileUrl ? "Open X profile" : undefined,
+		},
+		{
+			id: "instagram_follow",
+			title: "Follow on Instagram",
 			description: `
 <b>📸 Instagram — verification steps</b>
 
