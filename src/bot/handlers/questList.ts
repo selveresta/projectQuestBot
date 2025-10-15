@@ -167,11 +167,7 @@ export class QuestListHandler {
                         const existingWallet = user.wallet ?? status.metadata ?? undefined;
                         await promptForContact(ctx, "wallet", existingWallet);
                 }
-                if (definition.id === "sol_wallet_submit") {
-                        const existingSolWallet = user.solanaWallet ?? status.metadata ?? undefined;
-                        await promptForContact(ctx, "solana_wallet", existingSolWallet);
-                }
-	}
+        }
 
 	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
 		const keyboard = new Keyboard();

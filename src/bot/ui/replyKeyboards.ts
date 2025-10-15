@@ -38,7 +38,7 @@ export function buildMainMenuMessage(options: MainMenuMessageOptions = {}): stri
                 "51–100 place — $20",
                 "",
                 "🪂 Your mission:",
-                "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email and wallets (EVM & SOL).",
+                "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email and EVM wallet.",
                 "",
                 "Tap \"🗂 Quest list\" below and start completing tasks now — every step brings you closer to the rewards.",
         ];

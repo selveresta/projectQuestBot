@@ -7,10 +7,7 @@ export const EMAIL_PROMPT =
         "✉️ Please reply to this message with the email you want to use for the giveaway.";
 const WALLET_PROMPT =
         "💼 Please reply to this message with your EVM wallet address (0x…).";
-const SOL_WALLET_PROMPT =
-        "🪙 Please reply to this message with your Solana wallet address.";
-
-type PendingContactType = "email" | "wallet" | "solana_wallet";
+type PendingContactType = "email" | "wallet";
 const CONTACT_PENDING_TTL_SECONDS = 600;
 
 function pendingContactKey(userId: number): string {
@@ -31,7 +28,7 @@ async function getPendingContact(ctx: BotContext): Promise<PendingContactType | 
                 return undefined;
         }
         const raw = await ctx.services.redis.get(pendingContactKey(userId));
-        if (raw === "email" || raw === "wallet" || raw === "solana_wallet") {
+        if (raw === "email" || raw === "wallet") {
                 return raw;
         }
         return undefined;
@@ -53,18 +50,11 @@ async function clearPendingContact(ctx: BotContext, type?: PendingContactType): 
 }
 
 function buildPromptText(type: PendingContactType, existing?: string): string {
-        const base =
-                type === "email"
-                        ? EMAIL_PROMPT
-                        : type === "wallet"
-                        ? WALLET_PROMPT
-                        : SOL_WALLET_PROMPT;
+        const base = type === "email" ? EMAIL_PROMPT : WALLET_PROMPT;
         const label =
                 type === "email"
                         ? "email"
-                        : type === "wallet"
-                        ? "wallet"
-                        : "SOL wallet";
+                        : "wallet";
         const suffix = existing && existing.trim().length > 0 ? `Current ${label}: ${existing}` : undefined;
         return [base, suffix].filter(Boolean).join("\n\n");
 }
@@ -120,17 +110,6 @@ export class ContactHandler {
                         return;
                 }
 
-                const isSolanaWalletContext =
-                        this.isReplyToPrompt(ctx, SOL_WALLET_PROMPT) || pending === "solana_wallet";
-                if (isSolanaWalletContext) {
-                        if (pending === "solana_wallet" && text.startsWith("/")) {
-                                await next();
-                                return;
-                        }
-                        await this.processSolanaWallet(ctx, userId, text);
-                        return;
-                }
-
                 await next();
         }
 
@@ -148,11 +127,11 @@ export class ContactHandler {
 		});
 	}
 
-	private async processWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
-		if (!this.isValidWallet(wallet)) {
-			await ctx.reply(
-				"The wallet should be a 0x… hexadecimal address. Please double-check and resend."
-			);
+        private async processWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
+                if (!this.isValidWallet(wallet)) {
+                        await ctx.reply(
+                                "The wallet should be a 0x… hexadecimal address. Please double-check and resend."
+                        );
 			return;
 		}
 
@@ -164,23 +143,7 @@ export class ContactHandler {
                 });
         }
 
-        private async processSolanaWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
-                if (!this.isValidSolanaWallet(wallet)) {
-                        await ctx.reply(
-                                "That does not look like a valid Solana wallet. Solana addresses are base58 strings between 32 and 44 characters."
-                        );
-                        return;
-                }
-
-                await ctx.services.questService.updateContact(userId, { solanaWallet: wallet });
-                await ctx.services.questService.completeQuest(userId, "sol_wallet_submit", wallet);
-                await clearPendingContact(ctx, "solana_wallet");
-                await ctx.reply("✅ Solana wallet saved. Keep going to climb the leaderboard!", {
-                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-                });
-        }
-
-	private isReplyToPrompt(ctx: BotContext, prompt: string): boolean {
+        private isReplyToPrompt(ctx: BotContext, prompt: string): boolean {
 		const reply = ctx.message?.reply_to_message;
 		if (!reply?.text) {
 			return false;
@@ -197,9 +160,5 @@ export class ContactHandler {
 
         private isValidWallet(input: string): boolean {
                 return /^0x[a-fA-F0-9]{40}$/.test(input);
-        }
-
-        private isValidSolanaWallet(input: string): boolean {
-                return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(input);
         }
 }

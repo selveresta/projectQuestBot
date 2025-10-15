@@ -7,10 +7,7 @@ export type QuestId =
         | "website_visit"
         | "email_submit"
         | "wallet_submit"
-        | "sol_wallet_submit"
-        | "x_like"
-        | "discord_like"
-        | "telegram_like";
+        | "x_like";
 
 export type QuestPhase = "live" | "stub";
 
@@ -23,8 +20,7 @@ export type QuestType =
         | "social_engagement"
         | "website_visit"
         | "email_collection"
-        | "wallet_collection"
-        | "sol_wallet_collection";
+        | "wallet_collection";
 
 export interface QuestDefinition {
 	id: QuestId;

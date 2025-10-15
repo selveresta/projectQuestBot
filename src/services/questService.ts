@@ -16,11 +16,8 @@ const QUEST_POINT_VALUES: Partial<Record<QuestId, number>> = {
         x_follow: 2,
         instagram_follow: 2,
         x_like: 1,
-        discord_like: 1,
-        telegram_like: 1,
         email_submit: 4,
         wallet_submit: 1,
-        sol_wallet_submit: 1,
 };
 
 const REFERRAL_BONUS_POINTS = 1;
@@ -86,7 +83,7 @@ export class QuestService {
                 contact: Partial<
                         Pick<
                                 UserRecord,
-                                "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId"
+                                "email" | "wallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId"
                         >
                 >
         ): Promise<UserRecord> {

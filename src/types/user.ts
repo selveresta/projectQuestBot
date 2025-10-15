@@ -25,7 +25,6 @@ export interface UserRecord {
   creditedReferrals?: number[];
   email?: string;
   wallet?: string;
-  solanaWallet?: string;
   xProfileUrl?: string;
   instagramProfileUrl?: string;
   discordUserId?: string;

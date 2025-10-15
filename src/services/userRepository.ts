@@ -293,7 +293,6 @@ export class UserRepository {
                                 UserRecord,
                                 | "email"
                                 | "wallet"
-                                | "solanaWallet"
                                 | "xProfileUrl"
                                 | "instagramProfileUrl"
                                 | "discordUserId"

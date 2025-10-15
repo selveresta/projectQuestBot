@@ -47,7 +47,6 @@ export class StatusCommandHandler {
                         `Referrals credited: ${referralsCount}`,
                         `Email: ${user.email ?? "not submitted"}`,
                         `Wallet (EVM): ${user.wallet ?? "not submitted"}`,
-                        `Solana wallet: ${user.solanaWallet ?? "not submitted"}`,
                         `X profile: ${user.xProfileUrl ?? "not submitted"}`,
                         `Instagram profile: ${user.instagramProfileUrl ?? "not submitted"}`,
                         `Discord ID: ${user.discordUserId ?? "not linked"}`,
