@@ -1,7 +1,7 @@
 import { Composer, InlineKeyboard } from "grammy";
 
 import type { BotContext } from "../../types/context";
-import { buildMainMenuKeyboard, buildMainMenuMessage } from "../ui/replyKeyboards";
+import { buildMainMenuKeyboard, buildPostCaptchaWelcomeMessage } from "../ui/replyKeyboards";
 
 export class CaptchaHandler {
 	static buildKeyboard(options: string[]): InlineKeyboard {
@@ -27,30 +27,30 @@ export class CaptchaHandler {
 			return;
 		}
 
-		const repo = ctx.services.userRepository;
-		const captcha = ctx.services.captchaService;
-		const user = await repo.get(userId);
+                const repo = ctx.services.userRepository;
+                const captcha = ctx.services.captchaService;
+                const existingUser = await repo.get(userId);
 
-		if (!user || !user.pendingCaptcha) {
-			await this.regenerateChallenge(ctx, userId);
-			return;
-		}
+                if (!existingUser || !existingUser.pendingCaptcha) {
+                        await this.regenerateChallenge(ctx, userId);
+                        return;
+                }
 
-		if (captcha.isExpired(user.pendingCaptcha)) {
-			await ctx.answerCallbackQuery({ text: "Captcha expired. Try again." });
-			await this.regenerateChallenge(ctx, userId);
-			return;
-		}
+                if (captcha.isExpired(existingUser.pendingCaptcha)) {
+                        await ctx.answerCallbackQuery({ text: "Captcha expired. Try again." });
+                        await this.regenerateChallenge(ctx, userId);
+                        return;
+                }
 
-		const isCorrect = captcha.verify(user.pendingCaptcha, selection);
+                const isCorrect = captcha.verify(existingUser.pendingCaptcha, selection);
 		if (!isCorrect) {
 			await this.handleIncorrectAttempt(ctx, userId);
 			return;
 		}
 
-		await repo.markCaptchaPassed(userId);
-		await ctx.editMessageText("✅ You passed the human check!");
-		await this.showMainMenu(ctx);
+                await repo.markCaptchaPassed(userId);
+                await ctx.editMessageText("✅ You passed the human check!");
+                await this.sendPostCaptchaWelcome(ctx);
 	}
 
 	private async regenerateChallenge(ctx: BotContext, userId: number): Promise<void> {
@@ -84,7 +84,11 @@ export class CaptchaHandler {
 		}
 	}
 
-	private async showMainMenu(ctx: BotContext): Promise<void> {
-		await ctx.reply(buildMainMenuMessage(), { reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId) });
-	}
+        private async sendPostCaptchaWelcome(ctx: BotContext): Promise<void> {
+                const message = buildPostCaptchaWelcomeMessage();
+                await ctx.reply(message, {
+                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+                        link_preview_options: { is_disabled: true },
+                });
+        }
 }

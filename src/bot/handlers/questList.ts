@@ -27,11 +27,11 @@ export class QuestListHandler {
 		await this.sendQuestList(ctx, ctx.from.id);
 	}
 
-	private async handleBackToMenu(ctx: BotContext): Promise<void> {
-		await ctx.reply("Back to the main menu.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-		});
-	}
+        private async handleBackToMenu(ctx: BotContext): Promise<void> {
+                await ctx.reply("Select an option from the menu below.", {
+                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+                });
+        }
 
 	private async handleQuestSelection(ctx: BotContext, next: () => Promise<void>): Promise<void> {
 		if (!ctx.from) {
@@ -159,15 +159,15 @@ export class QuestListHandler {
 			link_preview_options: { is_disabled: true },
 		});
 
-		if (definition.id === "email_submit") {
-			const existingEmail = user.email ?? status.metadata ?? undefined;
-			await promptForContact(ctx, "email", existingEmail);
-		}
-		if (definition.id === "wallet_submit") {
-			const existingEmail = user.wallet ?? status.metadata ?? undefined;
-			await promptForContact(ctx, "wallet", existingEmail);
-		}
-	}
+                if (definition.id === "email_submit") {
+                        const existingEmail = user.email ?? status.metadata ?? undefined;
+                        await promptForContact(ctx, "email", existingEmail);
+                }
+                if (definition.id === "wallet_submit") {
+                        const existingWallet = user.wallet ?? status.metadata ?? undefined;
+                        await promptForContact(ctx, "wallet", existingWallet);
+                }
+        }
 
 	private buildQuestListKeyboard(statuses: QuestStatus[]): Keyboard {
 		const keyboard = new Keyboard();

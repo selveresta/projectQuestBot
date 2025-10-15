@@ -21,6 +21,7 @@ import {
 	clearPendingSocialQuest,
 } from "../helpers/socialQuests";
 import { verifySocialFollow, DEFAULT_WAIT_MS } from "../../services/socialVerification";
+import { notifyReferralReward } from "../helpers/referrals";
 
 export class StubQuestHandler {
 	register(composer: Composer<BotContext>): void {
@@ -106,11 +107,12 @@ export class StubQuestHandler {
 			return;
 		}
 
-		await questService.completeQuest(userId, questId);
-		await ctx.answerCallbackQuery({
-			text: `${quest.title} marked as complete.`,
-			show_alert: false,
-		});
+                const completion = await questService.completeQuest(userId, questId);
+                await notifyReferralReward(ctx, completion.referralReward);
+                await ctx.answerCallbackQuery({
+                        text: `${quest.title} marked as complete.`,
+                        show_alert: false,
+                });
 
 		await ctx.editMessageText("Quest recorded. Run /status to check your updated progress.");
 	}
@@ -215,12 +217,13 @@ export class StubQuestHandler {
 				targetBefore: result.targetBefore,
 				targetAfter: result.targetAfter,
 			});
-			await questService.completeQuest(userId, questId, metadata);
-			await ctx.api.editMessageText(
-				pendingMessage.chat.id,
-				pendingMessage.message_id,
-				"✅ Follow verified! The quest has been marked as complete."
-			);
+                        const completion = await questService.completeQuest(userId, questId, metadata);
+                        await notifyReferralReward(ctx, completion.referralReward);
+                        await ctx.api.editMessageText(
+                                pendingMessage.chat.id,
+                                pendingMessage.message_id,
+                                "✅ Follow verified! The quest has been marked as complete."
+                        );
 		} catch (error) {
 			console.error("[socialVerification] failed", {
 				userId,
