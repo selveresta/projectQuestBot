@@ -4,11 +4,11 @@ import type { BotContext } from "../../../types/context";
 import {
 	buildAdminKeyboard,
 	buildMainMenuKeyboard,
-	buildMainMenuMessage,
 	BUTTON_ADMIN_DASHBOARD,
 	BUTTON_ADMIN_DOWNLOAD,
 	BUTTON_ADMIN_PANEL,
 	BUTTON_BACK_TO_MENU,
+	MENU_PLACEHOLDER_TEXT,
 } from "../../ui/replyKeyboards";
 import { QuestDefinition } from "../../../types/quest";
 import { UserRecord } from "../../../types/user";
@@ -51,25 +51,25 @@ export class AdminCommandHandler {
 
 	private flattenUsersToCsv(users: UserRecord[], questDefs: QuestDefinition[]): { filename: string; csv: string } {
 		// Заголовок: базові поля + по 3 колонки на кожен квест
-                const baseCols = [
-                        "userId",
-                        "username",
-                        "firstName",
-                        "lastName",
-                        "captchaPassed",
-                        "captchaAttempts",
-                        "email",
-                        "wallet",
-                        "xProfileUrl",
-                        "instagramProfileUrl",
-                        "discordUserId",
-                        "points",
-                        "referralsCount",
-                        "referredBy",
-                        "createdAt",
-                        "updatedAt",
-                        "eligible",
-                ];
+		const baseCols = [
+			"userId",
+			"username",
+			"firstName",
+			"lastName",
+			"captchaPassed",
+			"captchaAttempts",
+			"email",
+			"wallet",
+			"xProfileUrl",
+			"instagramProfileUrl",
+			"discordUserId",
+			"points",
+			"referralsCount",
+			"referredBy",
+			"createdAt",
+			"updatedAt",
+			"eligible",
+		];
 
 		const questCols: string[] = [];
 		for (const q of questDefs) {
@@ -91,18 +91,18 @@ export class AdminCommandHandler {
 				u.username ?? "",
 				u.firstName ?? "",
 				u.lastName ?? "",
-                                u.captchaPassed,
-                                u.captchaAttempts,
-                                u.email ?? "",
-                                u.wallet ?? "",
-                                u.xProfileUrl ?? "",
-                                u.instagramProfileUrl ?? "",
-                                u.discordUserId ?? "",
-                                u.points ?? 0,
-                                u.creditedReferrals?.length ?? 0,
-                                u.referredBy ?? "",
-                                u.createdAt,
-                                u.updatedAt,
+				u.captchaPassed,
+				u.captchaAttempts,
+				u.email ?? "",
+				u.wallet ?? "",
+				u.xProfileUrl ?? "",
+				u.instagramProfileUrl ?? "",
+				u.discordUserId ?? "",
+				u.points ?? 0,
+				u.creditedReferrals?.length ?? 0,
+				u.referredBy ?? "",
+				u.createdAt,
+				u.updatedAt,
 				// eligible — розраховуємо як: капча пройдена + всі обов'язкові квести виконані
 				// (на випадок, якщо сервіс уже має метод — краще використовувати його; тут — локальна оцінка)
 				null // тимчасово, нижче перезапишемо
@@ -231,9 +231,11 @@ export class AdminCommandHandler {
 		// Припустимо, що у тебе вже є builder головного меню:
 		// import { buildMainMenuMessage, buildMainMenuKeyboard } from "...";
 
-		const text = buildMainMenuMessage();
 		const kb = buildMainMenuKeyboard(ctx.config, ctx.chatId);
 
-		await ctx.reply(text, { reply_markup: kb });
+		await ctx.reply(MENU_PLACEHOLDER_TEXT, {
+			reply_markup: kb,
+			link_preview_options: { is_disabled: true },
+		});
 	}
 }

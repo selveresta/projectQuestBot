@@ -22,8 +22,7 @@ const CHROME_CANDIDATES = [
 	"chromium",
 ];
 
-const HEADLESS =
-	process.env.HEADLESS === undefined ? true : /^(1|true|yes)$/i.test(String(process.env.HEADLESS));
+const HEADLESS = process.env.HEADLESS === undefined ? true : /^(1|true|yes)$/i.test(String(process.env.HEADLESS));
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -119,4 +118,3 @@ for (const signal of shutdownSignals) {
 process.once("beforeExit", () => {
 	void closeSharedBrowser();
 });
-

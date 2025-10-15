@@ -62,10 +62,7 @@ export async function captureSocialBaseline({
 	userUrl: string;
 	targetUrl: string;
 }): Promise<SocialVerificationBaseline | undefined> {
-	const [user, target] = await Promise.all([
-		fetchCounts(platform, userUrl),
-		fetchCounts(platform, targetUrl),
-	]);
+	const [user, target] = await Promise.all([fetchCounts(platform, userUrl), fetchCounts(platform, targetUrl)]);
 
 	if (!hasValidCounts(user, "following") || !hasValidCounts(target, "followers")) {
 		return undefined;
@@ -97,10 +94,7 @@ export async function verifySocialFollow({
 
 	await new Promise((resolve) => setTimeout(resolve, waitMs));
 
-	const [userAfter, targetAfter] = await Promise.all([
-		fetchCounts(platform, userUrl),
-		fetchCounts(platform, targetUrl),
-	]);
+	const [userAfter, targetAfter] = await Promise.all([fetchCounts(platform, userUrl), fetchCounts(platform, targetUrl)]);
 
 	if (!hasValidCounts(userAfter, "following") || !hasValidCounts(targetAfter, "followers")) {
 		return {
@@ -125,9 +119,7 @@ export async function verifySocialFollow({
 
 	return {
 		success,
-		reason: success
-			? undefined
-			: "Follow verification failed. Please ensure you follow the target profile and try again.",
+		reason: success ? undefined : "Follow verification failed. Please ensure you follow the target profile and try again.",
 		userBefore,
 		targetBefore,
 		userAfter,

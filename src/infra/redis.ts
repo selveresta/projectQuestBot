@@ -23,9 +23,7 @@ class RedisManager {
 			this.client = await this.connect(url);
 			this.url = url;
 		} else if (this.url && this.url !== url) {
-			throw new Error(
-				`RedisManager already initialised with URL ${this.url} but received ${url}`
-			);
+			throw new Error(`RedisManager already initialised with URL ${this.url} but received ${url}`);
 		} else if (!this.client.isOpen) {
 			await this.client.connect();
 		}

@@ -4,29 +4,34 @@ import { UserRepository } from "./userRepository";
 
 export interface QuestStatus {
         definition: QuestDefinition;
-        completed: boolean;
-        completedAt?: string;
-        metadata?: string;
+	completed: boolean;
+	completedAt?: string;
+	metadata?: string;
+}
+
+export interface QuestCompletionResult {
+	user: UserRecord;
+	referralRewardedReferrerId?: number;
 }
 
 const QUEST_POINT_VALUES: Partial<Record<QuestId, number>> = {
-        telegram_channel: 2,
-        telegram_chat: 2,
-        discord_join: 2,
-        x_follow: 2,
-        instagram_follow: 2,
-        x_like: 1,
-        email_submit: 4,
-        wallet_submit: 1,
+	telegram_channel: 2,
+	telegram_chat: 2,
+	discord_join: 2,
+	x_follow: 2,
+	instagram_follow: 2,
+	x_like: 1,
+	email_submit: 4,
+	wallet_submit: 1,
 };
 
 const REFERRAL_BONUS_POINTS = 1;
 
 export class QuestService {
-        private readonly definitions: QuestDefinition[];
-        private readonly definitionMap: Map<QuestId, QuestDefinition>;
-        private readonly mandatoryQuestIds: QuestId[];
-        private readonly questIds: QuestId[];
+	private readonly definitions: QuestDefinition[];
+	private readonly definitionMap: Map<QuestId, QuestDefinition>;
+	private readonly mandatoryQuestIds: QuestId[];
+	private readonly questIds: QuestId[];
 
 	constructor(private readonly userRepository: UserRepository, definitions: QuestDefinition[]) {
 		this.definitions = definitions;
@@ -60,35 +65,30 @@ export class QuestService {
 		return Boolean(user.quests[questId]?.completed);
 	}
 
-        async completeQuest(userId: number, questId: QuestId, metadata?: string): Promise<UserRecord> {
-                const user = await this.userRepository.getOrCreate(userId);
-                const alreadyCompleted = Boolean(user.quests[questId]?.completed);
-                const questCompletedUser = await this.userRepository.completeQuest(userId, questId, metadata);
+	async completeQuest(userId: number, questId: QuestId, metadata?: string): Promise<QuestCompletionResult> {
+		const user = await this.userRepository.getOrCreate(userId);
+		const alreadyCompleted = Boolean(user.quests[questId]?.completed);
+		const questCompletedUser = await this.userRepository.completeQuest(userId, questId, metadata);
 
-                if (alreadyCompleted) {
-                        return questCompletedUser;
-                }
+		if (alreadyCompleted) {
+			return { user: questCompletedUser };
+		}
 
-                let finalUser = questCompletedUser;
-                const points = QUEST_POINT_VALUES[questId] ?? 0;
-                if (points > 0) {
-                        finalUser = await this.userRepository.addQuestPoints(userId, questId, points);
-                }
+		let finalUser = questCompletedUser;
+		const points = QUEST_POINT_VALUES[questId] ?? 0;
+		if (points > 0) {
+			finalUser = await this.userRepository.addQuestPoints(userId, questId, points);
+		}
 
-                return this.evaluateReferralProgress(finalUser);
-        }
+		return this.evaluateReferralProgress(finalUser);
+	}
 
-        async updateContact(
-                userId: number,
-                contact: Partial<
-                        Pick<
-                                UserRecord,
-                                "email" | "wallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId"
-                        >
-                >
-        ): Promise<UserRecord> {
-                return this.userRepository.updateContact(userId, contact);
-        }
+	async updateContact(
+		userId: number,
+		contact: Partial<Pick<UserRecord, "email" | "wallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">>
+	): Promise<UserRecord> {
+		return this.userRepository.updateContact(userId, contact);
+	}
 
 	async saveQuestMetadata(userId: number, questId: QuestId, metadata: string): Promise<UserRecord> {
 		return this.userRepository.setQuestMetadata(userId, questId, metadata);
@@ -117,41 +117,45 @@ export class QuestService {
 		return user.captchaPassed && hasMandatoryQuests;
 	}
 
-	async markTelegramChannel(userId: number): Promise<UserRecord> {
+	async markTelegramChannel(userId: number): Promise<QuestCompletionResult> {
 		return this.completeQuest(userId, "telegram_channel");
 	}
 
-	async markTelegramChat(userId: number): Promise<UserRecord> {
+	async markTelegramChat(userId: number): Promise<QuestCompletionResult> {
 		return this.completeQuest(userId, "telegram_chat");
 	}
 
-	async markDiscordMembership(userId: number, metadata?: string): Promise<UserRecord> {
+	async markDiscordMembership(userId: number, metadata?: string): Promise<QuestCompletionResult> {
 		return this.completeQuest(userId, "discord_join", metadata);
 	}
 
-        async countEligibleParticipants(): Promise<number> {
-                return this.userRepository.countEligibleUsers(this.mandatoryQuestIds);
-        }
+	async countEligibleParticipants(): Promise<number> {
+		return this.userRepository.countEligibleUsers(this.mandatoryQuestIds);
+	}
 
-        async getLeaderboard(limit: number): Promise<UserRecord[]> {
-                return this.userRepository.getTopUsersByPoints(limit);
-        }
+	async getLeaderboard(limit: number): Promise<UserRecord[]> {
+		return this.userRepository.getTopUsersByPoints(limit);
+	}
 
-        async getUserRank(userId: number): Promise<{ rank: number; points: number; total: number } | null> {
-                return this.userRepository.getUserRank(userId);
-        }
+	async getUserRank(userId: number): Promise<{ rank: number; points: number; total: number } | null> {
+		return this.userRepository.getUserRank(userId);
+	}
 
-        private async evaluateReferralProgress(user: UserRecord): Promise<UserRecord> {
-                if (!user.referredBy || user.referralBonusClaimed) {
-                        return user;
-                }
+	private async evaluateReferralProgress(user: UserRecord): Promise<QuestCompletionResult> {
+		if (!user.referredBy || user.referralBonusClaimed) {
+			return { user };
+		}
 
-                const hasCompletedQuest = Object.values(user.quests ?? {}).some((entry) => entry?.completed);
-                if (!hasCompletedQuest) {
-                        return user;
-                }
+		const hasCompletedQuest = Object.values(user.quests ?? {}).some((entry) => entry?.completed);
+		if (!hasCompletedQuest) {
+			return { user };
+		}
 
-                await this.userRepository.awardReferralBonus(user.referredBy, user.userId, REFERRAL_BONUS_POINTS);
-                return this.userRepository.markReferralBonusClaimed(user.userId);
-        }
+		const referrer = await this.userRepository.awardReferralBonus(user.referredBy, user.userId, REFERRAL_BONUS_POINTS);
+		const updatedUser = await this.userRepository.markReferralBonusClaimed(user.userId);
+		if (referrer) {
+			return { user: updatedUser, referralRewardedReferrerId: referrer.userId };
+		}
+		return { user: updatedUser };
+	}
 }

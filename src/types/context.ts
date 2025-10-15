@@ -7,13 +7,13 @@ import type { QuestService } from "../services/questService";
 import type { UserRepository } from "../services/userRepository";
 
 export interface BotServices {
-  redis: RedisClient;
-  userRepository: UserRepository;
-  questService: QuestService;
-  captchaService: CaptchaService;
+	redis: RedisClient;
+	userRepository: UserRepository;
+	questService: QuestService;
+	captchaService: CaptchaService;
 }
 
 export type BotContext = Context & {
-  config: AppConfig;
-  services: BotServices;
+	config: AppConfig;
+	services: BotServices;
 };

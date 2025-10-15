@@ -10,6 +10,7 @@ import { StubQuestHandler } from "./questCompletion";
 import { QuestListHandler } from "./questList";
 import { SocialProfileHandler } from "./socialProfiles";
 import { LeaderboardHandler } from "./leaderboard";
+import { ReferralInviteHandler } from "./referralInvite";
 
 export class BotHandlerRegistry {
 	build(): Composer<BotContext> {
@@ -20,19 +21,21 @@ export class BotHandlerRegistry {
 		const statusCommandHandler = new StatusCommandHandler(stubQuestHandler);
 		const adminCommandHandler = new AdminCommandHandler();
 		const contactHandler = new ContactHandler();
-                const questListHandler = new QuestListHandler();
-                const socialProfileHandler = new SocialProfileHandler();
-                const leaderboardHandler = new LeaderboardHandler();
+		const questListHandler = new QuestListHandler();
+		const socialProfileHandler = new SocialProfileHandler();
+		const leaderboardHandler = new LeaderboardHandler();
+		const referralInviteHandler = new ReferralInviteHandler();
 
-                captchaHandler.register(composer);
-                startCommandHandler.register(composer);
-                statusCommandHandler.register(composer);
-                adminCommandHandler.register(composer);
-                contactHandler.register(composer);
-                questListHandler.register(composer);
-                socialProfileHandler.register(composer);
-                leaderboardHandler.register(composer);
-                stubQuestHandler.register(composer);
+		captchaHandler.register(composer);
+		startCommandHandler.register(composer);
+		statusCommandHandler.register(composer);
+		adminCommandHandler.register(composer);
+		contactHandler.register(composer);
+		questListHandler.register(composer);
+		socialProfileHandler.register(composer);
+		leaderboardHandler.register(composer);
+		referralInviteHandler.register(composer);
+		stubQuestHandler.register(composer);
 
 		composer.command("help", this.handleHelpCommand);
 		return composer;
@@ -45,9 +48,9 @@ export class BotHandlerRegistry {
 				"",
 				"Commands:",
 				"- /start — begin the giveaway flow",
-			"- /status — check your quest progress",
-			"- /quests — open the quest list",
-			"- /admin — admin utilities (restricted)",
+				"- /status — check your quest progress",
+				"- /quests — open the quest list",
+				"- /admin — admin utilities (restricted)",
 			].join("\n")
 		);
 	}
