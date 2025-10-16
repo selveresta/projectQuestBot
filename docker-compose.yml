@@ -40,16 +40,20 @@ services:
       - -c
       - >
         mkdir -p /var/log &&
-        echo "Starting cron for Redis backups" &&
-        crond -f -l 2
+        while true; do
+          echo "[$$(date '+%Y-%m-%d %H:%M:%S')] running redis backup" >> /var/log/redis-backup.log;
+          /bin/sh /scripts/redis-backup.sh >> /var/log/redis-backup.log 2>&1;
+          sleep ${BACKUP_INTERVAL:-7200};
+        done
     environment:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       BACKUP_DIR: /backups
       DATA_FILE: /data/dump.rdb
       TTL_DAYS: "7"
+      BACKUP_INTERVAL: "7200"
     volumes:
       - ./docker/backup/redis-backup.sh:/scripts/redis-backup.sh:ro
-      - ./docker/backup/crontab:/etc/crontabs/root:ro
       - ./db/data:/data:ro
       - ./db/backups:/backups
+      - ./db/backups/logs:/var/log
