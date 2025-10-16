@@ -3,7 +3,7 @@ import type { UserRecord } from "../types/user";
 import { UserRepository } from "./userRepository";
 
 export interface QuestStatus {
-        definition: QuestDefinition;
+	definition: QuestDefinition;
 	completed: boolean;
 	completedAt?: string;
 	metadata?: string;
@@ -20,9 +20,10 @@ const QUEST_POINT_VALUES: Partial<Record<QuestId, number>> = {
 	discord_join: 2,
 	x_follow: 2,
 	instagram_follow: 2,
-	x_like: 1,
+	website_visit: 2,
 	email_submit: 4,
 	wallet_submit: 1,
+	sol_wallet_submit: 1,
 };
 
 const REFERRAL_BONUS_POINTS = 1;
@@ -85,7 +86,7 @@ export class QuestService {
 
 	async updateContact(
 		userId: number,
-		contact: Partial<Pick<UserRecord, "email" | "wallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">>
+		contact: Partial<Pick<UserRecord, "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">>
 	): Promise<UserRecord> {
 		return this.userRepository.updateContact(userId, contact);
 	}

@@ -22,10 +22,11 @@ export interface UserRecord {
 	questPoints?: Partial<Record<QuestId, number>>;
 	referredBy?: number;
 	referralBonusClaimed?: boolean;
-	creditedReferrals?: number[];
-	email?: string;
-	wallet?: string;
-	xProfileUrl?: string;
+        creditedReferrals?: number[];
+        email?: string;
+        wallet?: string;
+        solanaWallet?: string;
+        xProfileUrl?: string;
 	instagramProfileUrl?: string;
 	discordUserId?: string;
 	createdAt: string;

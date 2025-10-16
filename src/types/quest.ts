@@ -7,7 +7,7 @@ export type QuestId =
 	| "website_visit"
 	| "email_submit"
 	| "wallet_submit"
-	| "x_like";
+	| "sol_wallet_submit";
 
 export type QuestPhase = "live" | "stub";
 
