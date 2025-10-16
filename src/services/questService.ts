@@ -3,7 +3,7 @@ import type { UserRecord } from "../types/user";
 import { UserRepository } from "./userRepository";
 
 export interface QuestStatus {
-        definition: QuestDefinition;
+	definition: QuestDefinition;
 	completed: boolean;
 	completedAt?: string;
 	metadata?: string;
@@ -17,14 +17,13 @@ export interface QuestCompletionResult {
 const QUEST_POINT_VALUES: Partial<Record<QuestId, number>> = {
 	telegram_channel: 2,
 	telegram_chat: 2,
-        discord_join: 2,
-        x_follow: 2,
-        instagram_follow: 2,
-        x_like: 1,
-        website_visit: 1,
-        email_submit: 4,
-        wallet_submit: 1,
-        sol_wallet_submit: 1,
+	discord_join: 2,
+	x_follow: 2,
+	instagram_follow: 2,
+	website_visit: 2,
+	email_submit: 4,
+	wallet_submit: 1,
+	sol_wallet_submit: 1,
 };
 
 const REFERRAL_BONUS_POINTS = 1;
@@ -85,17 +84,12 @@ export class QuestService {
 		return this.evaluateReferralProgress(finalUser);
 	}
 
-        async updateContact(
-                userId: number,
-                contact: Partial<
-                        Pick<
-                                UserRecord,
-                                "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId"
-                        >
-                >
-        ): Promise<UserRecord> {
-                return this.userRepository.updateContact(userId, contact);
-        }
+	async updateContact(
+		userId: number,
+		contact: Partial<Pick<UserRecord, "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">>
+	): Promise<UserRecord> {
+		return this.userRepository.updateContact(userId, contact);
+	}
 
 	async saveQuestMetadata(userId: number, questId: QuestId, metadata: string): Promise<UserRecord> {
 		return this.userRepository.setQuestMetadata(userId, questId, metadata);

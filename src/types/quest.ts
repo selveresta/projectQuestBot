@@ -4,11 +4,10 @@ export type QuestId =
 	| "discord_join"
 	| "x_follow"
 	| "instagram_follow"
-        | "website_visit"
-        | "email_submit"
-        | "wallet_submit"
-        | "sol_wallet_submit"
-        | "x_like";
+	| "website_visit"
+	| "email_submit"
+	| "wallet_submit"
+	| "sol_wallet_submit";
 
 export type QuestPhase = "live" | "stub";
 

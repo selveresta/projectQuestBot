@@ -58,10 +58,10 @@ export class AdminCommandHandler {
 			"lastName",
 			"captchaPassed",
 			"captchaAttempts",
-                        "email",
-                        "wallet",
-                        "solanaWallet",
-                        "xProfileUrl",
+			"email",
+			"wallet",
+			"solanaWallet",
+			"xProfileUrl",
 			"instagramProfileUrl",
 			"discordUserId",
 			"points",
@@ -95,9 +95,9 @@ export class AdminCommandHandler {
 				u.captchaPassed,
 				u.captchaAttempts,
 				u.email ?? "",
-                                u.wallet ?? "",
-                                u.solanaWallet ?? "",
-                                u.xProfileUrl ?? "",
+				u.wallet ?? "",
+				u.solanaWallet ?? "",
+				u.xProfileUrl ?? "",
 				u.instagramProfileUrl ?? "",
 				u.discordUserId ?? "",
 				u.points ?? 0,
@@ -157,9 +157,6 @@ export class AdminCommandHandler {
 		for (const qc of perQuestCounts) {
 			lines.push(`• <b>${qc.title}</b> — ${qc.done} users`);
 		}
-
-		lines.push("");
-		lines.push("Phase 2 tasks are stubbed and will require external integrations.");
 
 		return lines.join("\n");
 	}

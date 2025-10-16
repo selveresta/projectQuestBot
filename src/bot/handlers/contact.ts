@@ -11,9 +11,9 @@ type PendingContactType = "email" | "wallet" | "sol_wallet";
 const CONTACT_PENDING_TTL_SECONDS = 600;
 
 const CONTACT_PROMPTS: Record<PendingContactType, { prompt: string; label: string }> = {
-        email: { prompt: EMAIL_PROMPT, label: "email" },
-        wallet: { prompt: EVM_WALLET_PROMPT, label: "EVM wallet" },
-        sol_wallet: { prompt: SOL_WALLET_PROMPT, label: "SOL wallet" },
+	email: { prompt: EMAIL_PROMPT, label: "email" },
+	wallet: { prompt: EVM_WALLET_PROMPT, label: "EVM wallet" },
+	sol_wallet: { prompt: SOL_WALLET_PROMPT, label: "SOL wallet" },
 };
 
 function pendingContactKey(userId: number): string {
@@ -33,10 +33,10 @@ async function getPendingContact(ctx: BotContext): Promise<PendingContactType | 
 	if (!userId) {
 		return undefined;
 	}
-        const raw = await ctx.services.redis.get(pendingContactKey(userId));
-        if (raw === "email" || raw === "wallet" || raw === "sol_wallet") {
-                return raw;
-        }
+	const raw = await ctx.services.redis.get(pendingContactKey(userId));
+	if (raw === "email" || raw === "wallet" || raw === "sol_wallet") {
+		return raw;
+	}
 	return undefined;
 }
 
@@ -56,9 +56,9 @@ async function clearPendingContact(ctx: BotContext, type?: PendingContactType): 
 }
 
 function buildPromptText(type: PendingContactType, existing?: string): string {
-        const config = CONTACT_PROMPTS[type];
-        const suffix = existing && existing.trim().length > 0 ? `Current ${config.label}: ${existing}` : undefined;
-        return [config.prompt, suffix].filter(Boolean).join("\n\n");
+	const config = CONTACT_PROMPTS[type];
+	const suffix = existing && existing.trim().length > 0 ? `Current ${config.label}: ${existing}` : undefined;
+	return [config.prompt, suffix].filter(Boolean).join("\n\n");
 }
 
 export async function promptForContact(ctx: BotContext, type: PendingContactType, existing?: string): Promise<void> {
@@ -98,25 +98,25 @@ export class ContactHandler {
 			return;
 		}
 
-                const isWalletContext = this.isReplyToPrompt(ctx, EVM_WALLET_PROMPT) || pending === "wallet";
-                if (isWalletContext) {
-                        if (pending === "wallet" && text.startsWith("/")) {
-                                await next();
-                                return;
-                        }
-                        await this.processEvmWallet(ctx, userId, text);
-                        return;
-                }
+		const isWalletContext = this.isReplyToPrompt(ctx, EVM_WALLET_PROMPT) || pending === "wallet";
+		if (isWalletContext) {
+			if (pending === "wallet" && text.startsWith("/")) {
+				await next();
+				return;
+			}
+			await this.processEvmWallet(ctx, userId, text);
+			return;
+		}
 
-                const isSolWalletContext = this.isReplyToPrompt(ctx, SOL_WALLET_PROMPT) || pending === "sol_wallet";
-                if (isSolWalletContext) {
-                        if (pending === "sol_wallet" && text.startsWith("/")) {
-                                await next();
-                                return;
-                        }
-                        await this.processSolWallet(ctx, userId, text);
-                        return;
-                }
+		const isSolWalletContext = this.isReplyToPrompt(ctx, SOL_WALLET_PROMPT) || pending === "sol_wallet";
+		if (isSolWalletContext) {
+			if (pending === "sol_wallet" && text.startsWith("/")) {
+				await next();
+				return;
+			}
+			await this.processSolWallet(ctx, userId, text);
+			return;
+		}
 
 		await next();
 	}
@@ -136,37 +136,35 @@ export class ContactHandler {
 		});
 	}
 
-        private async processEvmWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
-                if (!this.isValidEvmWallet(wallet)) {
-                        await ctx.reply("The wallet should be a 0x… hexadecimal address. Please double-check and resend.");
-                        return;
-                }
+	private async processEvmWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
+		if (!this.isValidEvmWallet(wallet)) {
+			await ctx.reply("The wallet should be a 0x… hexadecimal address. Please double-check and resend.");
+			return;
+		}
 
-                await ctx.services.questService.updateContact(userId, { wallet });
-                const completion = await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
-                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-                await clearPendingContact(ctx, "wallet");
-                await ctx.reply("✅ Wallet saved. Run /status to make sure everything looks good.", {
-                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-                });
-        }
+		await ctx.services.questService.updateContact(userId, { wallet });
+		const completion = await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
+		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+		await clearPendingContact(ctx, "wallet");
+		await ctx.reply("✅ Wallet saved. Run /status to make sure everything looks good.", {
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+		});
+	}
 
-        private async processSolWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
-                if (!this.isValidSolWallet(wallet)) {
-                        await ctx.reply(
-                                "The SOL wallet should be a valid Solana address (base58, 32-44 characters). Please double-check and resend."
-                        );
-                        return;
-                }
+	private async processSolWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
+		if (!this.isValidSolWallet(wallet)) {
+			await ctx.reply("The SOL wallet should be a valid Solana address (base58, 32-44 characters). Please double-check and resend.");
+			return;
+		}
 
-                await ctx.services.questService.updateContact(userId, { solanaWallet: wallet });
-                const completion = await ctx.services.questService.completeQuest(userId, "sol_wallet_submit", wallet);
-                await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-                await clearPendingContact(ctx, "sol_wallet");
-                await ctx.reply("✅ SOL wallet saved. Run /status to make sure everything looks good.", {
-                        reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-                });
-        }
+		await ctx.services.questService.updateContact(userId, { solanaWallet: wallet });
+		const completion = await ctx.services.questService.completeQuest(userId, "sol_wallet_submit", wallet);
+		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+		await clearPendingContact(ctx, "sol_wallet");
+		await ctx.reply("✅ SOL wallet saved. Run /status to make sure everything looks good.", {
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+		});
+	}
 
 	private isReplyToPrompt(ctx: BotContext, prompt: string): boolean {
 		const reply = ctx.message?.reply_to_message;
@@ -183,11 +181,11 @@ export class ContactHandler {
 		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
 	}
 
-        private isValidEvmWallet(input: string): boolean {
-                return /^0x[a-fA-F0-9]{40}$/.test(input);
-        }
+	private isValidEvmWallet(input: string): boolean {
+		return /^0x[a-fA-F0-9]{40}$/.test(input);
+	}
 
-        private isValidSolWallet(input: string): boolean {
-                return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(input);
-        }
+	private isValidSolWallet(input: string): boolean {
+		return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(input);
+	}
 }
