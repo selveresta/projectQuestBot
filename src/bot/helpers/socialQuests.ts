@@ -6,13 +6,12 @@ import type { UserRecord } from "../../types/user";
 import { captureSocialBaseline, type SocialPlatform, type SocialVerificationBaseline } from "../../services/socialVerification";
 import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
 
-export const SOCIAL_QUEST_IDS = ["x_follow", "instagram_follow", "discord_join"] as const;
+export const SOCIAL_QUEST_IDS = ["x_follow", "instagram_follow"] as const;
 export type SocialQuestId = (typeof SOCIAL_QUEST_IDS)[number];
 
 const SOCIAL_PLATFORM_MAP: Record<SocialQuestId, SocialPlatform> = {
 	x_follow: "x",
 	instagram_follow: "instagram",
-	discord_join: "discord",
 };
 
 interface SocialQuestConfig {
@@ -41,14 +40,14 @@ const SOCIAL_QUESTS: Record<SocialQuestId, SocialQuestConfig> = {
 		invalidMessage: "Please send the link to your Instagram profile (for example: https://instagram.com/yourhandle).",
 		successMessage: "✅ Instagram profile saved.",
 	},
-	discord_join: {
-		field: "discordUserId",
-		promptPrefix: "📸 Share your Discord user ID.",
-		sampleUrl: "272413599446597632",
-		allowedDomains: ["discord.com"],
-		invalidMessage: "Please send the ID to your Discord user (for example: 272413599446597632).",
-		successMessage: "✅ Discord user saved.",
-	},
+	// discord_join: {
+	// 	field: "discordUserId",
+	// 	promptPrefix: "📸 Share your Discord user ID.",
+	// 	sampleUrl: "272413599446597632",
+	// 	allowedDomains: ["discord.com"],
+	// 	invalidMessage: "Please send the ID to your Discord user (for example: 272413599446597632).",
+	// 	successMessage: "✅ Discord user saved.",
+	// },
 };
 
 export function isSocialQuestId(questId: QuestId): questId is SocialQuestId {
@@ -171,9 +170,9 @@ export async function ensureSocialBaseline(
 	questId: SocialQuestId,
 	userUrl: string
 ): Promise<SocialVerificationBaseline | undefined> {
-	if (questId === "discord_join") {
-		return undefined;
-	}
+	// if (questId === "discord_join") {
+	// 	return undefined;
+	// }
 
 	const existing = await getSocialBaseline(ctx, userId, questId);
 	if (existing) {
@@ -210,10 +209,7 @@ export async function ensureSocialBaseline(
 
 export async function promptForSocialProfile(ctx: BotContext, questId: SocialQuestId, existing?: string): Promise<void> {
 	const config = getSocialQuestConfig(questId);
-	const instructions =
-		questId === "discord_join"
-			? `Reply with the ID \n(for example: ${config.sampleUrl}).`
-			: `Reply with the full URL \n(for example: ${config.sampleUrl}).`;
+	const instructions = `Reply with the full URL \n(for example: ${config.sampleUrl}).`;
 	const lines = [config.promptPrefix, existing ? `Current submission: ${existing}` : undefined, instructions].filter(Boolean);
 
 	await setPendingSocialQuest(ctx, questId);
@@ -248,14 +244,7 @@ export async function identifySocialQuestFromMessage(ctx: BotContext): Promise<S
 		return getPendingSocialQuest(ctx);
 	}
 
-	if (looksLikeDiscordId(text)) {
-		return "discord_join";
-	}
-
 	for (const questId of SOCIAL_QUEST_IDS) {
-		if (questId === "discord_join") {
-			continue;
-		}
 		if (isValidSocialProfileInput(text, questId)) {
 			return questId;
 		}
@@ -272,10 +261,6 @@ export async function identifySocialQuestFromMessage(ctx: BotContext): Promise<S
 }
 
 export function isValidSocialProfileInput(input: string, questId: SocialQuestId): boolean {
-	if (questId === "discord_join") {
-		return looksLikeDiscordId(input);
-	}
-
 	try {
 		const url = new URL(input);
 		if (!["http:", "https:"].includes(url.protocol)) {
@@ -295,10 +280,6 @@ export function isValidSocialProfileInput(input: string, questId: SocialQuestId)
 }
 
 export function normalizeSocialProfileInput(input: string, questId: SocialQuestId): string {
-	if (questId === "discord_join") {
-		return input.trim();
-	}
-
 	const url = new URL(input);
 	url.protocol = "https:";
 	url.hash = "";
