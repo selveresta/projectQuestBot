@@ -43,7 +43,7 @@ export function buildWelcomeAnnouncement(): string {
 		"20 October – 10 November",
 		"",
 		"🪂 Your mission:",
-		"Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email and wallet (EVM).",
+                "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email plus both EVM & SOL wallets.",
 		"",
 		"Tap Quests list below and start completing tasks now — every step brings you closer to the rewards.",
 	].join("\n");

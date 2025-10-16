@@ -202,11 +202,15 @@ export class QuestListHandler {
 			const existingEmail = user.email ?? status.metadata ?? undefined;
 			await promptForContact(ctx, "email", existingEmail);
 		}
-		if (definition.id === "wallet_submit") {
-			const existingWallet = user.wallet ?? status.metadata ?? undefined;
-			await promptForContact(ctx, "wallet", existingWallet);
-		}
-	}
+                if (definition.id === "wallet_submit") {
+                        const existingWallet = user.wallet ?? status.metadata ?? undefined;
+                        await promptForContact(ctx, "wallet", existingWallet);
+                }
+                if (definition.id === "sol_wallet_submit") {
+                        const existingWallet = user.solanaWallet ?? status.metadata ?? undefined;
+                        await promptForContact(ctx, "sol_wallet", existingWallet);
+                }
+        }
 
 	private buildQuestListKeyboard(statuses: QuestStatus[]): InlineKeyboard {
 		const keyboard = new InlineKeyboard();
