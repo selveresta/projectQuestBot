@@ -68,9 +68,7 @@ export class QuestListHandler {
 		}
 
 		const user = await questService.getUser(userId);
-		const existingSocialUrl = isSocialQuestId(target.definition.id)
-			? getExistingSocialUrl(user, target.definition.id)
-			: undefined;
+		const existingSocialUrl = isSocialQuestId(target.definition.id) ? getExistingSocialUrl(user, target.definition.id) : undefined;
 		if (!existingSocialUrl && isSocialQuestId(target.definition.id)) {
 			await ctx.reply("📸 Share your profile link. \n Return to the main menu and use Set Instagram/X/Discord button.");
 			return;
@@ -97,6 +95,14 @@ export class QuestListHandler {
 		const target = statuses.find((status) => status.definition.id === questId);
 		if (!target || !this.shouldDisplay(target)) {
 			await ctx.answerCallbackQuery({ text: "Quest not available.", show_alert: true });
+			return;
+		}
+
+		const user = await questService.getUser(userId);
+		const existingSocialUrl = isSocialQuestId(target.definition.id) ? getExistingSocialUrl(user, target.definition.id) : undefined;
+		if (!existingSocialUrl && isSocialQuestId(target.definition.id)) {
+			await ctx.reply("📸 Share your profile link. \n Use Set Instagram/X/Discord button.");
+			await ctx.answerCallbackQuery({ text: target.definition.title });
 			return;
 		}
 

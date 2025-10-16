@@ -1,4 +1,4 @@
-import { Composer, InlineKeyboard } from "grammy";
+import { Composer, InlineKeyboard, InputFile } from "grammy";
 
 import type { BotContext } from "../../types/context";
 import type { UserRecord } from "../../types/user";
@@ -87,9 +87,9 @@ export class CaptchaHandler {
 
 	private async showMainMenu(ctx: BotContext, _user: UserRecord): Promise<void> {
 		const message = buildWelcomeAnnouncement();
-		await ctx.reply(message, {
+		await ctx.replyWithPhoto(new InputFile("img/welcomeIntro.png"), {
+			caption: message,
 			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-			link_preview_options: { is_disabled: true },
 		});
 	}
 }

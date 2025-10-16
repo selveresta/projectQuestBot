@@ -1,4 +1,4 @@
-import { Composer } from "grammy";
+import { Composer, InputFile } from "grammy";
 
 import type { BotContext } from "../../types/context";
 import { BUTTON_LEADERBOARD, buildMainMenuKeyboard } from "../ui/replyKeyboards";
@@ -58,9 +58,9 @@ export class LeaderboardHandler {
 
 		lines.push("", "🔝 Boost your rank — complete Quests in the bot (follow, join, refer, on-chain actions).");
 
-		await ctx.reply(lines.join("\n"), {
+		await ctx.replyWithPhoto(new InputFile("img/leaderboard.png"), {
+			caption: lines.join("\n"),
 			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-			link_preview_options: { is_disabled: true },
 		});
 	}
 }

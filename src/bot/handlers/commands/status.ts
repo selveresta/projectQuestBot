@@ -1,4 +1,4 @@
-import { Composer } from "grammy";
+import { Composer, InputFile } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 import type { QuestId } from "../../../types/quest";
@@ -73,8 +73,8 @@ export class StatusCommandHandler {
 			return;
 		}
 
-		await ctx.reply(
-			`
+		await ctx.replyWithPhoto(new InputFile("img/about.png"), {
+			caption: `
 What is Trady ❓
 
 Trady is the alpha trading terminal for on-chain pros and degens – the only stack you’ll need.
@@ -90,7 +90,7 @@ Trade faster, smarter, and fully on your terms:
 🎁 Rewards
 Winners receive USDT and Early Access to Trady – where even bigger prizes and exclusive rewards await.
 			`,
-			{ reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId), link_preview_options: { is_disabled: true } }
-		);
+			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+		});
 	}
 }
