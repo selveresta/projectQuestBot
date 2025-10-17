@@ -55,7 +55,7 @@ export class StartCommandHandler {
 		await ctx.services.userRepository.setCaptchaChallenge(userId, challenge);
 		await ctx.reply(
 			[
-				"👋 Welcome to Trady Quest!",
+				"👋 Welcome to Trady Giveaway!",
 				"",
 				"Before you can join the giveaway we just need a quick verification.",
 				challenge.prompt,

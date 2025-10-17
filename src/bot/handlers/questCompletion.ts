@@ -21,6 +21,7 @@ import {
 	clearPendingSocialQuest,
 } from "../helpers/socialQuests";
 import { notifyReferralBonus } from "../helpers/referrals";
+import { DuplicateContactError } from "../../services/errors";
 import { verifySocialFollow, DEFAULT_WAIT_MS } from "../../services/socialVerification";
 
 export class StubQuestHandler {
@@ -110,7 +111,7 @@ export class StubQuestHandler {
 			show_alert: false,
 		});
 
-		await ctx.editMessageText("Quest recorded. Run /status to check your updated progress.");
+		await ctx.editMessageText("Quest recorded.");
 	}
 
 	private async handleSocialVerification(ctx: BotContext): Promise<void> {
@@ -257,7 +258,18 @@ export class StubQuestHandler {
 
 		const userId = ctx.from.id;
 		const normalized = normalizeSocialProfileInput(input, questId);
-		await saveSocialProfile(ctx.services.questService, userId, questId, normalized);
+		try {
+			await saveSocialProfile(ctx.services.questService, userId, questId, normalized);
+		} catch (error) {
+			if (error instanceof DuplicateContactError) {
+				await ctx.reply("This profile is already linked to another participant. Please submit a different profile.");
+				await promptForSocialProfile(ctx, questId);
+				return;
+			}
+			console.error("[social] Failed to save social profile", { userId, questId, error });
+			await ctx.reply("Something went wrong while saving your profile. Please try again later.");
+			return;
+		}
 		await clearSocialBaseline(ctx, userId, questId);
 		await clearPendingSocialQuest(ctx);
 		await ctx.reply(getSocialSuccessMessage(questId));

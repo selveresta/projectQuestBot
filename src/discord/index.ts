@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, Partials } from "discord.js";
 
 import { appConfig, type AppConfig } from "../config";
 import { acquireRedisClient, releaseRedisClient, type RedisClient } from "../infra/redis";
+import { TelegramNotifier } from "../infra/telegramNotifier";
 import { createQuestDefinitions } from "../quests/catalog";
 import { QuestService } from "../services/questService";
 import { UserRepository } from "../services/userRepository";
@@ -10,6 +11,7 @@ export class DiscordVerifier {
 	private readonly client: Client;
 	private redisClient: RedisClient | null = null;
 	private questService: QuestService | null = null;
+	private telegramNotifier: TelegramNotifier | null = null;
 
 	constructor(private readonly config: AppConfig) {
 		this.client = new Client({
@@ -42,6 +44,7 @@ export class DiscordVerifier {
 		const questIds = questDefinitions.map((definition) => definition.id);
 		const userRepository = new UserRepository(this.redisClient, questIds);
 		this.questService = new QuestService(userRepository, questDefinitions);
+		this.telegramNotifier = new TelegramNotifier(this.config.botToken);
 	}
 
 	private registerEventHandlers(): void {
@@ -94,26 +97,27 @@ export class DiscordVerifier {
 
 		const [, telegramIdRaw] = content.split(/\s+/, 2);
 		if (!telegramIdRaw) {
-			await reply("Usage: !verify <telegram-id> — grab your numeric ID from /status in Telegram.");
+			await reply("Usage: !verify <telegram-id> — grab your numeric ID from status in Telegram.");
 			return;
 		}
 
 		const telegramId = Number.parseInt(telegramIdRaw, 10);
 		if (!Number.isSafeInteger(telegramId)) {
-			await reply("The Telegram ID must be a number. Try again with /status in Telegram to copy it.");
+			await reply("The Telegram ID must be a number. Try again with status in Telegram to copy it.");
 			return;
 		}
 
 		const questService = this.requireQuestService();
 		const alreadyCompleted = await questService.hasCompletedQuest(telegramId, "discord_join");
 		if (alreadyCompleted) {
-			await reply("You are already verified for the giveaway. See /status in Telegram for details.");
+			await reply("You are already verified for the giveaway. See status in Telegram for details.");
 			return;
 		}
 
 		await questService.updateContact(telegramId, { discordUserId: authorId });
 		await questService.markDiscordMembership(telegramId, `discord:${authorId}`);
-		await reply("Verification recorded! Use /status in Telegram to confirm your progress.");
+		await this.telegramNotifier?.notifyDiscordQuestCompleted(telegramId);
+		await reply("Verification recorded! Use status in Telegram to confirm your progress.");
 	}
 
 	private requireQuestService(): QuestService {
@@ -132,6 +136,7 @@ export class DiscordVerifier {
 		await releaseRedisClient();
 		this.redisClient = null;
 		this.questService = null;
+		this.telegramNotifier = null;
 	}
 }
 

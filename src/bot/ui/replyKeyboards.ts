@@ -22,7 +22,6 @@ export function buildWelcomeAnnouncement(): string {
 		"Welcome to the Trady Giveaway 🎉",
 		"",
 		"Trady it's all-in-one alpha trading terminal.",
-		"",
 		"Unified Balance • All On-chain • No KYC • Custom UI • Self-Custody",
 		"",
 		"Get ready to join our exclusive $5,000 reward campaign!",
@@ -39,13 +38,12 @@ export function buildWelcomeAnnouncement(): string {
 		"51–100 place — $20 + invite code",
 		"",
 		"⏰ Period:",
-		"",
 		"20 October – 10 November",
 		"",
 		"🪂 Your mission:",
-                "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email plus both EVM & SOL wallets.",
+        "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email, EVM wallet, and Solana wallet.",
 		"",
-		"Tap Quests list below and start completing tasks now — every step brings you closer to the rewards.",
+		"Tap “🗂 Quest list” below and start completing tasks now — every step brings you closer to the rewards.",
 	].join("\n");
 }
 
@@ -53,7 +51,7 @@ export function buildReferralInviteMessage(referralsCount: number, referralLink:
 	return [
 		"⏳ Invite Friends",
 		"",
-		"Invite your friends to join the Trady Giveaway and earn points for each active referral.",
+		"Invite your friends to join the Trady Giveaway and earn 1 point for each active referral.",
 		"You’ll receive points only after your referral completes at least one quest.",
 		"",
 		`Status: ${referralsCount} referrals confirmed.`,
@@ -93,10 +91,8 @@ export function buildMainMenuKeyboard(config?: AppConfig, adminId?: number): Key
 		});
 	}
 
-	keyboard.row().text(BUTTON_ABOUT);
-	keyboard.row().text(BUTTON_CHECK_STATUS).text(BUTTON_LEADERBOARD);
-
-	keyboard.row().text(BUTTON_INVITE_FRIENDS);
+	keyboard.row().text(BUTTON_INVITE_FRIENDS).text(BUTTON_CHECK_STATUS);
+	keyboard.row().text(BUTTON_LEADERBOARD).text(BUTTON_ABOUT);
 	return keyboard.resized().persistent();
 }
 

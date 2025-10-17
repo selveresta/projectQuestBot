@@ -161,8 +161,6 @@ export class QuestListHandler {
 			status.completed ? `Status: Completed${status.completedAt ? ` at ${status.completedAt}` : ""}.` : "Status: Pending completion.",
 		];
 
-		console.log(lines);
-
 		if (existingSocialUrl && definition.id !== "discord_join") {
 			lines.push(`Stored profile: ${existingSocialUrl}`);
 		} else if (status.metadata) {
@@ -174,7 +172,7 @@ export class QuestListHandler {
 		}
 
 		if (definition.id === "email_submit") {
-			lines.push("", "Reply to the prompt below with your email to submit or update it.");
+			lines.push("", "✉️ Reply to this message with the email you want to use for the giveaway.");
 		}
 
 		if (definition.id === "discord_join") {
@@ -183,11 +181,13 @@ export class QuestListHandler {
 			// 	lines.push("", `Linked Discord ID: ${user.discordUserId}`);
 			// }
 			lines.push(
-				"",
 				"Discord verification steps:",
-				inviteLink ? `1. Join the Discord server: ${inviteLink}` : "1. Join the Discord server.",
-				`2. In the verification channel, send: \`!verify ${userId}\``,
-				"3. Wait for the bot to confirm your verification here."
+				"",
+				inviteLink ? `1. Join the server: ${inviteLink}` : "1. Join the Discord server.",
+				"2. Complete the initial user verification to unlock access.",
+				"3. Go to #🎁▪️giveaway-verification channel.",
+				`4. Send the command: \`!verify ${userId}\``,
+				"5. Wait for the bot to confirm your verification here."
 			);
 		}
 
@@ -219,9 +219,7 @@ export class QuestListHandler {
 		const keyboard = new InlineKeyboard();
 		statuses.forEach((status, index) => {
 			keyboard.text(this.questButtonLabel(status), `quest-open:${status.definition.id}`);
-			if ((index + 1) % 2 === 0 && index !== statuses.length - 1) {
-				keyboard.row();
-			}
+			keyboard.row();
 		});
 		return keyboard;
 	}
@@ -261,7 +259,6 @@ export class QuestListHandler {
 				if (hasButton) {
 					keyboard.row();
 				}
-				keyboard.text("Check Discord status", "quest-check:discord_join");
 				break;
 			}
 			default: {

@@ -112,23 +112,23 @@ export function createQuestDefinitions(config: AppConfig): QuestDefinition[] {
 			phase: "live",
 			cta: "Submit email",
 		},
-                {
-                        id: "wallet_submit",
-                        title: "Submit your EVM wallet",
-                        description: "Provide an EVM-compatible wallet to receive rewards.",
-                        mandatory: true,
-                        type: "wallet_collection",
-                        phase: "live",
-                        cta: "Submit wallet",
-                },
-                {
-                        id: "sol_wallet_submit",
-                        title: "Submit your SOL wallet",
-                        description: "Share your Solana wallet address so we can reach you on SOL as well.",
-                        mandatory: true,
-                        type: "wallet_collection",
-                        phase: "live",
-                        cta: "Submit SOL wallet",
-                },
-        ];
+		{
+			id: "wallet_submit",
+			title: "Submit your EVM wallet",
+			description: "Provide an EVM-compatible wallet to receive rewards.",
+			mandatory: true,
+			type: "wallet_collection",
+			phase: "live",
+			cta: "Submit wallet",
+		},
+		{
+			id: "sol_wallet_submit",
+			title: "Submit your SOL wallet",
+			description: "Share your Solana wallet address so we can reach you on SOL as well.",
+			mandatory: true,
+			type: "wallet_collection",
+			phase: "live",
+			cta: "Submit SOL wallet",
+		},
+	];
 }

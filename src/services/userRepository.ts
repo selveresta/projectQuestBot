@@ -283,18 +283,15 @@ export class UserRepository {
 		return user;
 	}
 
-        async updateContact(
-                userId: number,
-                contact: Partial<
-                        Pick<
-                                UserRecord,
-                                "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId"
-                        >
-                >
-        ): Promise<UserRecord> {
-                const user = (await this.get(userId)) ?? this.createUserRecord(userId);
-                const updated: UserRecord = {
-                        ...user,
+	async updateContact(
+		userId: number,
+		contact: Partial<
+			Pick<UserRecord, "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">
+		>
+	): Promise<UserRecord> {
+		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
+		const updated: UserRecord = {
+			...user,
 			...contact,
 			updatedAt: now(),
 		};

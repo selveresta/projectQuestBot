@@ -1,6 +1,7 @@
 import { Composer } from "grammy";
 
 import type { BotContext } from "../../types/context";
+import { DuplicateContactError } from "../../services/errors";
 import { notifyReferralBonus } from "../helpers/referrals";
 import { buildMainMenuKeyboard } from "../ui/replyKeyboards";
 
@@ -66,10 +67,10 @@ export async function promptForContact(ctx: BotContext, type: PendingContactType
 		return;
 	}
 
-	const prompt = buildPromptText(type, existing);
-	await ctx.reply(prompt, {
-		reply_markup: { force_reply: true, selective: true },
-	});
+	// const prompt = buildPromptText(type, existing);
+	// await ctx.reply(prompt, {
+	// 	reply_markup: { force_reply: true, selective: true },
+	// });
 	await setPendingContact(ctx, type);
 }
 
@@ -127,43 +128,75 @@ export class ContactHandler {
 			return;
 		}
 
-		await ctx.services.questService.updateContact(userId, { email });
-		const completion = await ctx.services.questService.completeQuest(userId, "email_submit", email);
-		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-		await clearPendingContact(ctx, "email");
-		await ctx.reply("✅ Email saved. You can update it at any time via the menu.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-		});
+		try {
+			await ctx.services.questService.updateContact(userId, { email });
+			const completion = await ctx.services.questService.completeQuest(userId, "email_submit", email);
+			await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+			await clearPendingContact(ctx, "email");
+			await ctx.reply("✅ Email saved. You can update it at any time via the menu.", {
+				reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+			});
+		} catch (error) {
+			if (error instanceof DuplicateContactError) {
+				await clearPendingContact(ctx, "email");
+				await ctx.reply("This email is already linked to another participant. Please submit a different address.");
+				return;
+			}
+			console.error("[contact] Failed to save email", { userId, error });
+			await ctx.reply("Something went wrong while saving your email. Please try again later.");
+		}
 	}
 
 	private async processEvmWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
 		if (!this.isValidEvmWallet(wallet)) {
+			await clearPendingContact(ctx, "wallet");
 			await ctx.reply("The wallet should be a 0x… hexadecimal address. Please double-check and resend.");
 			return;
 		}
 
-		await ctx.services.questService.updateContact(userId, { wallet });
-		const completion = await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
-		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-		await clearPendingContact(ctx, "wallet");
-		await ctx.reply("✅ Wallet saved. Run /status to make sure everything looks good.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-		});
+		try {
+			await ctx.services.questService.updateContact(userId, { wallet });
+			const completion = await ctx.services.questService.completeQuest(userId, "wallet_submit", wallet);
+			await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+			await clearPendingContact(ctx, "wallet");
+			await ctx.reply("✅ Wallet saved.", {
+				reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+			});
+		} catch (error) {
+			if (error instanceof DuplicateContactError) {
+				await clearPendingContact(ctx, "wallet");
+				await ctx.reply("This wallet address is already linked to another participant. Please use a different wallet.");
+				return;
+			}
+			console.error("[contact] Failed to save wallet", { userId, error });
+			await ctx.reply("Something went wrong while saving your wallet. Please try again later.");
+		}
 	}
 
 	private async processSolWallet(ctx: BotContext, userId: number, wallet: string): Promise<void> {
 		if (!this.isValidSolWallet(wallet)) {
+			await clearPendingContact(ctx, "sol_wallet");
 			await ctx.reply("The SOL wallet should be a valid Solana address (base58, 32-44 characters). Please double-check and resend.");
 			return;
 		}
 
-		await ctx.services.questService.updateContact(userId, { solanaWallet: wallet });
-		const completion = await ctx.services.questService.completeQuest(userId, "sol_wallet_submit", wallet);
-		await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
-		await clearPendingContact(ctx, "sol_wallet");
-		await ctx.reply("✅ SOL wallet saved. Run /status to make sure everything looks good.", {
-			reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
-		});
+		try {
+			await ctx.services.questService.updateContact(userId, { solanaWallet: wallet });
+			const completion = await ctx.services.questService.completeQuest(userId, "sol_wallet_submit", wallet);
+			await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
+			await clearPendingContact(ctx, "sol_wallet");
+			await ctx.reply("✅ SOL wallet saved.", {
+				reply_markup: buildMainMenuKeyboard(ctx.config, ctx.chatId),
+			});
+		} catch (error) {
+			if (error instanceof DuplicateContactError) {
+				await clearPendingContact(ctx, "sol_wallet");
+				await ctx.reply("This SOL wallet is already linked to another participant. Please use a different address.");
+				return;
+			}
+			console.error("[contact] Failed to save SOL wallet", { userId, error });
+			await ctx.reply("Something went wrong while saving your SOL wallet. Please try again later.");
+		}
 	}
 
 	private isReplyToPrompt(ctx: BotContext, prompt: string): boolean {

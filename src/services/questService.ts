@@ -1,6 +1,7 @@
 import type { QuestDefinition, QuestId } from "../types/quest";
 import type { UserRecord } from "../types/user";
 import { UserRepository } from "./userRepository";
+import { DuplicateContactError, type UniqueContactField } from "./errors";
 
 export interface QuestStatus {
 	definition: QuestDefinition;
@@ -27,6 +28,21 @@ const QUEST_POINT_VALUES: Partial<Record<QuestId, number>> = {
 };
 
 const REFERRAL_BONUS_POINTS = 1;
+const UNIQUE_CONTACT_FIELDS: UniqueContactField[] = ["email", "wallet", "solanaWallet", "xProfileUrl", "instagramProfileUrl"];
+const UNIQUE_CONTACT_FIELD_SET = new Set<UniqueContactField>(UNIQUE_CONTACT_FIELDS);
+type ContactField =
+	| "email"
+	| "wallet"
+	| "solanaWallet"
+	| "xProfileUrl"
+	| "instagramProfileUrl"
+	| "discordUserId";
+
+interface UniqueContactEntry {
+	field: UniqueContactField;
+	value: string;
+	normalized: string;
+}
 
 export class QuestService {
 	private readonly definitions: QuestDefinition[];
@@ -88,7 +104,43 @@ export class QuestService {
 		userId: number,
 		contact: Partial<Pick<UserRecord, "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">>
 	): Promise<UserRecord> {
-		return this.userRepository.updateContact(userId, contact);
+		const entries = Object.entries(contact ?? {}) as [ContactField, string | undefined][];
+		if (entries.length === 0) {
+			return this.userRepository.getOrCreate(userId);
+		}
+
+		const sanitized: Partial<
+			Pick<UserRecord, "email" | "wallet" | "solanaWallet" | "xProfileUrl" | "instagramProfileUrl" | "discordUserId">
+		> = {};
+		const uniqueEntries: UniqueContactEntry[] = [];
+
+		for (const [field, rawValue] of entries) {
+			if (typeof rawValue !== "string") {
+				continue;
+			}
+			const trimmed = rawValue.trim();
+			if (!trimmed) {
+				continue;
+			}
+
+			if (this.isUniqueContactField(field)) {
+				const normalized = this.normalizeContactValue(field, trimmed);
+				uniqueEntries.push({
+					field,
+					value: trimmed,
+					normalized,
+				});
+			}
+
+			sanitized[field] = this.prepareContactValue(field, trimmed);
+		}
+
+		if (Object.keys(sanitized).length === 0) {
+			return this.userRepository.getOrCreate(userId);
+		}
+
+		await this.ensureUniqueContactValues(userId, uniqueEntries);
+		return this.userRepository.updateContact(userId, sanitized);
 	}
 
 	async saveQuestMetadata(userId: number, questId: QuestId, metadata: string): Promise<UserRecord> {
@@ -140,6 +192,65 @@ export class QuestService {
 
 	async getUserRank(userId: number): Promise<{ rank: number; points: number; total: number } | null> {
 		return this.userRepository.getUserRank(userId);
+	}
+
+	private isUniqueContactField(field: ContactField): field is UniqueContactField {
+		return UNIQUE_CONTACT_FIELD_SET.has(field as UniqueContactField);
+	}
+
+	private normalizeContactValue(field: UniqueContactField, value: string): string {
+		const trimmed = value.trim();
+		switch (field) {
+			case "email":
+				return trimmed.toLowerCase();
+			case "wallet":
+				return trimmed.toLowerCase();
+			case "solanaWallet":
+				return trimmed;
+			case "xProfileUrl":
+			case "instagramProfileUrl":
+				return trimmed.replace(/\/+$/, "").toLowerCase();
+			default:
+				return trimmed;
+		}
+	}
+
+	private prepareContactValue(field: ContactField, value: string): string {
+		const trimmed = value.trim();
+		switch (field) {
+			case "email":
+				return trimmed.toLowerCase();
+			default:
+				return trimmed;
+		}
+	}
+
+	private async ensureUniqueContactValues(userId: number, entries: UniqueContactEntry[]): Promise<void> {
+		if (entries.length === 0) {
+			return;
+		}
+
+		const users = await this.userRepository.listAllUsers();
+		if (users.length === 0) {
+			return;
+		}
+
+		for (const entry of entries) {
+			const conflict = users.find((candidate) => {
+				if (candidate.userId === userId) {
+					return false;
+				}
+				const candidateRaw = candidate[entry.field];
+				if (typeof candidateRaw !== "string" || candidateRaw.trim().length === 0) {
+					return false;
+				}
+				return this.normalizeContactValue(entry.field, candidateRaw) === entry.normalized;
+			});
+
+			if (conflict) {
+				throw new DuplicateContactError(entry.field, entry.value, conflict.userId);
+			}
+		}
 	}
 
 	private async evaluateReferralProgress(user: UserRecord): Promise<QuestCompletionResult> {
