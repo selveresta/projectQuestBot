@@ -22,10 +22,11 @@ const CHROME_CANDIDATES = [
 	"chromium",
 ];
 
-// const HEADLESS = process.env.HEADLESS === undefined ? true : /^(1|true|yes)$/i.test(String(process.env.HEADLESS));
-const HEADLESS = false;
+const HEADLESS = process.env.HEADLESS === undefined ? true : /^(1|true|yes)$/i.test(String(process.env.HEADLESS));
 
 let browserPromise: Promise<Browser> | null = null;
+let launchAttempts = 0;
+let taskCounter = 0;
 
 function findChromeExecutable(): string | undefined {
 	const custom = process.env.CHROME_PATH;
@@ -46,6 +47,7 @@ function findChromeExecutable(): string | undefined {
 }
 
 async function launchBrowser(): Promise<Browser> {
+	const attempt = ++launchAttempts;
 	const options: LaunchOptions = {
 		headless: HEADLESS,
 		args: DEFAULT_ARGS,
@@ -55,7 +57,20 @@ async function launchBrowser(): Promise<Browser> {
 	if (executablePath) {
 		options.executablePath = executablePath;
 	}
-	return puppeteer.launch(options);
+	console.info("[browser] launching puppeteer", {
+		attempt,
+		headless: options.headless,
+		executablePath: options.executablePath ?? "default",
+		args: options.args,
+	});
+	try {
+		const browser = await puppeteer.launch(options);
+		console.info("[browser] launch successful", { attempt });
+		return browser;
+	} catch (error) {
+		console.error("[browser] launch failed", { attempt, error });
+		throw error;
+	}
 }
 
 async function getBrowser(): Promise<Browser> {
@@ -82,14 +97,20 @@ const queue = new TaskQueue();
 
 export function runWithPage<T>(handler: (page: Page) => Promise<T>): Promise<T> {
 	return queue.enqueue(async () => {
+		const taskId = ++taskCounter;
+		console.info("[browser] starting task", { taskId });
 		const browser = await getBrowser();
 		const page = await browser.newPage();
+		console.info("[browser] page opened", { taskId });
 		try {
-			return await handler(page);
+			const result = await handler(page);
+			console.info("[browser] task completed", { taskId });
+			return result;
 		} finally {
 			await page.close().catch(() => {
 				// swallow close errors
 			});
+			console.info("[browser] page closed", { taskId });
 		}
 	});
 }
@@ -101,6 +122,7 @@ export async function closeSharedBrowser(): Promise<void> {
 	try {
 		const browser = await browserPromise;
 		await browser.close();
+		console.info("[browser] closed shared instance");
 	} catch {
 		// ignore close errors
 	} finally {
@@ -111,11 +133,13 @@ export async function closeSharedBrowser(): Promise<void> {
 const shutdownSignals: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGQUIT"];
 for (const signal of shutdownSignals) {
 	process.once(signal, async () => {
+		console.info("[browser] received shutdown signal", { signal });
 		await closeSharedBrowser();
 		process.exit(0);
 	});
 }
 
 process.once("beforeExit", () => {
+	console.info("[browser] beforeExit triggered");
 	void closeSharedBrowser();
 });
