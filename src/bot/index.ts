@@ -1,4 +1,4 @@
-import { Bot } from "grammy";
+import { Bot, GrammyError } from "grammy";
 import type { Message } from "grammy/types";
 
 import type { AppConfig } from "../config";
@@ -29,6 +29,19 @@ export class BotApplication {
 		this.bot = new Bot<BotContext>(this.config.botToken);
 
 		this.bot.use(async (ctx, next) => {
+			const answerCallback = ctx.answerCallbackQuery.bind(ctx);
+			ctx.answerCallbackQuery = (async (...args) => {
+				try {
+					return await answerCallback(...args);
+				} catch (error) {
+					if (shouldSuppressCallbackQueryError(error)) {
+						console.warn("[bot] ignored answerCallbackQuery error", { error });
+						return;
+					}
+					throw error;
+				}
+			}) as typeof ctx.answerCallbackQuery;
+
 			ctx.config = this.config;
 			ctx.services = {
 				redis: this.requireRedisClient(),
@@ -43,6 +56,18 @@ export class BotApplication {
 			const chatType = ctx.chat?.type;
 			if (!chatType || chatType === "private") {
 				await next();
+				return;
+			}
+
+			const restrictionNotice = "Please interact with me in a private chat.";
+			if (ctx.update.callback_query) {
+				try {
+					console.warn(restrictionNotice);
+				} catch (error) {
+					if (!shouldSuppressCallbackQueryError(error)) {
+						throw error;
+					}
+				}
 				return;
 			}
 		});
@@ -97,4 +122,12 @@ export class BotApplication {
 		}
 		return this.captchaService;
 	}
+}
+
+function shouldSuppressCallbackQueryError(error: unknown): boolean {
+	if (error instanceof GrammyError && typeof error.description === "string") {
+		const normalized = error.description.toLowerCase();
+		return normalized.includes("query is too old") || normalized.includes("query id is invalid");
+	}
+	return false;
 }
