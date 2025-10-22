@@ -110,7 +110,7 @@ function extractCountsFromPayload(payload: unknown): GraphQLCounts | null {
 	return null;
 }
 
-function waitForGraphQLCounts(page: Page, timeoutMs = 30_000): Promise<GraphQLCounts> {
+function waitForGraphQLCounts(page: Page, timeoutMs = 10_000): Promise<GraphQLCounts> {
 	return new Promise<GraphQLCounts>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			page.off("response", handleResponse);
@@ -227,6 +227,22 @@ export async function fetchInstagramCounts(url: string): Promise<SocialCounts | 
 			}
 
 			await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+			const navigatedUrl = page.url();
+			console.info("[instagramFetcher] navigated", { requested: url, resolved: navigatedUrl });
+
+			const loginWallDetected = await page.evaluate(() => {
+				const loginInput = document.querySelector('input[name="username"]');
+				const loginText = document.body ? document.body.innerText : "";
+				return Boolean(loginInput) || /log in/i.test(loginText);
+			});
+
+			if (loginWallDetected) {
+				console.warn("[instagramFetcher] login wall detected", { url: navigatedUrl });
+				throw new Error("Instagram login required (login wall detected).");
+			}
+
+			await delay(1_000);
+
 			let counts: GraphQLCounts | null = null;
 			try {
 				counts = await waitForGraphQLCounts(page);
@@ -251,6 +267,13 @@ export async function fetchInstagramCounts(url: string): Promise<SocialCounts | 
 			url,
 			error,
 		});
+		if (error instanceof Error && /login/iu.test(error.message)) {
+			console.error("[instagramFetcher] instagram appears to require updated cookies or a logged-in session");
+		}
 		return undefined;
 	}
+}
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }

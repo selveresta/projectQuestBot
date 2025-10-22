@@ -1,4 +1,6 @@
-import puppeteer, { Browser, LaunchOptions, Page } from "puppeteer";
+import puppeteerExtra from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import type { Browser, LaunchOptions, Page } from "puppeteer";
 import which from "which";
 
 const DEFAULT_ARGS = [
@@ -27,6 +29,8 @@ const HEADLESS = process.env.HEADLESS === undefined ? true : /^(1|true|yes)$/i.t
 let browserPromise: Promise<Browser> | null = null;
 let launchAttempts = 0;
 let taskCounter = 0;
+
+puppeteerExtra.use(StealthPlugin());
 
 function findChromeExecutable(): string | undefined {
 	const custom = process.env.CHROME_PATH;
@@ -64,7 +68,7 @@ async function launchBrowser(): Promise<Browser> {
 		args: options.args,
 	});
 	try {
-		const browser = await puppeteer.launch(options);
+		const browser = await puppeteerExtra.launch(options);
 		console.info("[browser] launch successful", { attempt });
 		return browser;
 	} catch (error) {

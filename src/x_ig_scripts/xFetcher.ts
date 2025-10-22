@@ -84,7 +84,7 @@ function extractCountsFromPayload(payload: unknown): Counts | null {
 	return null;
 }
 
-function waitForGraphQLCounts(page: Page, timeoutMs = 30_000): Promise<Counts> {
+function waitForGraphQLCounts(page: Page, timeoutMs = 10_000): Promise<Counts> {
 	return new Promise<Counts>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			page.off("response", handler);
