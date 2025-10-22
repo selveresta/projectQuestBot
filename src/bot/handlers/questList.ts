@@ -3,7 +3,7 @@ import { Composer, InlineKeyboard } from "grammy";
 import type { BotContext } from "../../types/context";
 import type { QuestId } from "../../types/quest";
 import type { QuestStatus } from "../../services/questService";
-import { getExistingSocialUrl, isSocialQuestId, ensureSocialBaseline } from "../helpers/socialQuests";
+import { getExistingSocialUrl, isSocialQuestId } from "../helpers/socialQuests";
 import { TelegramMembershipVerifier } from "../helpers/membership";
 import {
 	BUTTON_BACK_TO_MENU,
@@ -142,15 +142,6 @@ export class QuestListHandler {
 		const user = await questService.getUser(userId);
 		const existingSocialUrl = isSocialQuestId(definition.id) ? getExistingSocialUrl(user, definition.id) : undefined;
 
-		if (isSocialQuestId(definition.id) && existingSocialUrl) {
-			void ensureSocialBaseline(ctx, userId, definition.id, existingSocialUrl).catch((error) => {
-				console.error("[questList] failed to ensure social baseline", {
-					userId,
-					questId: definition.id,
-					error,
-				});
-			});
-		}
 		const title = (id: QuestId) =>
 			`${status.completed ? "✅" : "⏳"} ${id === "discord_join" ? `**${definition.title}**` : `<b>${definition.title}</b>`} `;
 		const lines = [

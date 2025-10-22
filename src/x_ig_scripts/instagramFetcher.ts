@@ -227,21 +227,15 @@ export async function fetchInstagramCounts(url: string): Promise<SocialCounts | 
 			}
 
 			await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+			await delay(1_500);
+
 			const navigatedUrl = page.url();
 			console.info("[instagramFetcher] navigated", { requested: url, resolved: navigatedUrl });
 
-			const loginWallDetected = await page.evaluate(() => {
-				const loginInput = document.querySelector('input[name="username"]');
-				const loginText = document.body ? document.body.innerText : "";
-				return Boolean(loginInput) || /log in/i.test(loginText);
-			});
-
-			if (loginWallDetected) {
+			if (await isLoginWall(page)) {
 				console.warn("[instagramFetcher] login wall detected", { url: navigatedUrl });
 				throw new Error("Instagram login required (login wall detected).");
 			}
-
-			await delay(1_000);
 
 			let counts: GraphQLCounts | null = null;
 			try {
@@ -276,4 +270,23 @@ export async function fetchInstagramCounts(url: string): Promise<SocialCounts | 
 
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function isLoginWall(page: Page): Promise<boolean> {
+	return page.evaluate(() => {
+		const usernameField = document.querySelector('input[name="username"]');
+		const passwordField = document.querySelector('input[name="password"]');
+		const buttonCandidates = Array.from(document.querySelectorAll("button"));
+		const buttonText = buttonCandidates.map((el) => el.textContent?.trim().toLowerCase() ?? "").join(" ");
+		const bodyText = document.body?.innerText?.toLowerCase() ?? "";
+
+		const hasLoginCopy =
+			bodyText.includes("log in") ||
+			bodyText.includes("sign up") ||
+			bodyText.includes("password") ||
+			buttonText.includes("log in") ||
+			buttonText.includes("sign up");
+
+		return Boolean(usernameField && passwordField && hasLoginCopy);
+	});
 }

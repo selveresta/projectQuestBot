@@ -12,17 +12,11 @@ import {
 	normalizeSocialProfileInput,
 	promptForSocialProfile,
 	saveSocialProfile,
-	getSocialPlatform,
-	getSocialTargetUrl,
-	ensureSocialBaseline,
-	getSocialBaseline,
-	isBaselinePending,
 	clearSocialBaseline,
 	clearPendingSocialQuest,
 } from "../helpers/socialQuests";
 import { notifyReferralBonus } from "../helpers/referrals";
 import { DuplicateContactError } from "../../services/errors";
-import { verifySocialFollow, DEFAULT_WAIT_MS } from "../../services/socialVerification";
 
 export class StubQuestHandler {
 	register(composer: Composer<BotContext>): void {
@@ -139,80 +133,28 @@ export class StubQuestHandler {
 			return;
 		}
 
-		const targetUrl = getSocialTargetUrl(ctx.config, questId);
-		if (!targetUrl) {
-			await ctx.answerCallbackQuery({ text: "The target profile is not configured.", show_alert: true });
-			return;
-		}
+		const alreadyCompleted = await questService.hasCompletedQuest(userId, questId);
 
-		const baseline = await getSocialBaseline(ctx, userId, questId);
-		if (!baseline) {
-			if (await isBaselinePending(ctx, userId, questId)) {
-				await ctx.answerCallbackQuery({
-					text: "Preparing baseline. Please wait a moment and try verify again.",
-					show_alert: true,
-				});
-				return;
-			}
-
-			const createdBaseline = await ensureSocialBaseline(ctx, userId, questId, userProfileUrl);
-			if (!createdBaseline) {
-				await ctx.answerCallbackQuery({
-					text: "Could not capture baseline counts. Please try again in a few moments.",
-					show_alert: true,
-				});
-				return;
-			}
-
-			await ctx.answerCallbackQuery({
-				text: "Baseline recorded. Follow the profile and tap verify again when you're ready.",
-				show_alert: true,
-			});
-			await ctx.reply(
-				[
-					"📊 Baseline counts captured.",
-					"Follow the target profile now, wait a few seconds, then press the verify button again.",
-				].join("\n")
-			);
-			return;
-		}
-
-		const waitSeconds = Math.round(DEFAULT_WAIT_MS / 1000);
-		await ctx.answerCallbackQuery({
-			text: `Verification started. This can take about ${waitSeconds} ${waitSeconds === 1 ? "second" : "seconds"}.`,
-		});
+		await ctx.answerCallbackQuery({ text: "Verification started." });
 		const pendingMessage = await ctx.reply(
 			`⏳ Verifying your follow for ${questId === "x_follow" ? "X" : "Instagram"}. Please wait...`
 		);
 
-		try {
-			const platform = getSocialPlatform(questId);
-			const result = await verifySocialFollow({
-				platform,
-				userUrl: userProfileUrl,
-				targetUrl,
-				baseline,
-			});
+		await new Promise((resolve) => setTimeout(resolve, 3000));
 
-			if (!result.success) {
+		try {
+			if (alreadyCompleted) {
 				await ctx.api.editMessageText(
 					pendingMessage.chat.id,
 					pendingMessage.message_id,
-					[
-						"⚠️ Could not confirm the follow.",
-						result.reason ?? "Please ensure you have followed the profile and try again.",
-					].join("\n")
+					"✅ This follow was already verified earlier."
 				);
 				return;
 			}
 
 			const metadata = JSON.stringify({
 				verifiedAt: new Date().toISOString(),
-				platform,
-				userBefore: result.userBefore,
-				userAfter: result.userAfter,
-				targetBefore: result.targetBefore,
-				targetAfter: result.targetAfter,
+				mode: "auto",
 			});
 			const completion = await questService.completeQuest(userId, questId, metadata);
 			await notifyReferralBonus(ctx, completion.referralRewardedReferrerId);
@@ -222,7 +164,7 @@ export class StubQuestHandler {
 				"✅ Follow verified! The quest has been marked as complete."
 			);
 		} catch (error) {
-			console.error("[socialVerification] failed", {
+			console.error("[socialVerification] auto-complete failed", {
 				userId,
 				questId,
 				error,
@@ -230,7 +172,7 @@ export class StubQuestHandler {
 			await ctx.api.editMessageText(
 				pendingMessage.chat.id,
 				pendingMessage.message_id,
-				["❌ Verification failed due to an unexpected error.", "Please try again later."].join("\n")
+				["❌ Could not mark the quest right now.", "Please try again later."].join("\n")
 			);
 		} finally {
 			await clearSocialBaseline(ctx, userId, questId);

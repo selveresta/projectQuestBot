@@ -24,13 +24,46 @@ const CHROME_CANDIDATES = [
 	"chromium",
 ];
 
-const HEADLESS = process.env.HEADLESS === undefined ? true : /^(1|true|yes)$/i.test(String(process.env.HEADLESS));
+type HeadlessSetting = NonNullable<LaunchOptions["headless"]>;
+
+const HEADLESS_MODE = resolveHeadlessMode();
 
 let browserPromise: Promise<Browser> | null = null;
 let launchAttempts = 0;
 let taskCounter = 0;
 
 puppeteerExtra.use(StealthPlugin());
+
+function resolveHeadlessMode(): LaunchOptions["headless"] {
+	const rawMode = process.env.HEADLESS_MODE?.toLowerCase();
+	if (rawMode) {
+		if (rawMode === "false" || rawMode === "0" || rawMode === "no") {
+			return false;
+		}
+		if (rawMode === "true" || rawMode === "1" || rawMode === "yes") {
+			return true;
+		}
+		if (["shell", "new", "chrome"].includes(rawMode)) {
+			return rawMode as HeadlessSetting;
+		}
+	}
+
+	const raw = process.env.HEADLESS;
+	if (raw === undefined) {
+		return "shell";
+	}
+	if (/^(0|false|no)$/i.test(raw)) {
+		return false;
+	}
+	if (/^(1|true|yes)$/i.test(raw)) {
+		return true;
+	}
+	const candidate = raw.toLowerCase();
+	if (["shell", "new", "chrome"].includes(candidate)) {
+		return candidate as HeadlessSetting;
+	}
+	return true;
+}
 
 function findChromeExecutable(): string | undefined {
 	const custom = process.env.CHROME_PATH;
@@ -53,7 +86,7 @@ function findChromeExecutable(): string | undefined {
 async function launchBrowser(): Promise<Browser> {
 	const attempt = ++launchAttempts;
 	const options: LaunchOptions = {
-		headless: HEADLESS,
+		headless: HEADLESS_MODE,
 		args: DEFAULT_ARGS,
 		defaultViewport: null,
 	};
