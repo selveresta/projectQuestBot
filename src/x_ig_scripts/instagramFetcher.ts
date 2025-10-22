@@ -185,6 +185,29 @@ function parseCount(value: number | string | null | undefined): number {
 	return Math.round(num);
 }
 
+async function extractCountsFromDocument(page: Page): Promise<GraphQLCounts | null> {
+	try {
+		await page.waitForSelector('meta[property="og:description"]', { timeout: 10_000 });
+	} catch {
+		return null;
+	}
+	const content = await page.$eval('meta[property="og:description"]', (element) => element.getAttribute("content") ?? "");
+	if (!content) {
+		return null;
+	}
+	const followerMatch = content.match(/([\d.,\sKMB]+)\s+Followers?/i);
+	const followingMatch = content.match(/([\d.,\sKMB]+)\s+Following/i);
+	const followerValue = followerMatch ? parseCount(followerMatch[1]) : undefined;
+	const followingValue = followingMatch ? parseCount(followingMatch[1]) : undefined;
+	if (followerValue === undefined && followingValue === undefined) {
+		return null;
+	}
+	return {
+		followers: followerValue ?? null,
+		following: followingValue ?? null,
+	};
+}
+
 export async function fetchInstagramCounts(url: string): Promise<SocialCounts | undefined> {
 	try {
 		return await runWithPage(async (page) => {
@@ -204,7 +227,15 @@ export async function fetchInstagramCounts(url: string): Promise<SocialCounts | 
 			}
 
 			await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
-			const counts = await waitForGraphQLCounts(page);
+			let counts: GraphQLCounts | null = null;
+			try {
+				counts = await waitForGraphQLCounts(page);
+			} catch (graphQlError) {
+				counts = await extractCountsFromDocument(page);
+				if (!counts) {
+					throw graphQlError;
+				}
+			}
 			const followers = parseCount(counts.followers);
 			const following = parseCount(counts.following);
 
