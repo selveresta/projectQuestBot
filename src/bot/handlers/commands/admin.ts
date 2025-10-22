@@ -1,4 +1,4 @@
-import { Composer, InputFile, Keyboard } from "grammy";
+import { Composer, InputFile } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 import {
@@ -6,12 +6,18 @@ import {
 	buildMainMenuKeyboard,
 	BUTTON_ADMIN_DASHBOARD,
 	BUTTON_ADMIN_DOWNLOAD,
+	BUTTON_ADMIN_NOTIFY_USERS,
 	BUTTON_ADMIN_PANEL,
 	BUTTON_BACK_TO_MENU,
 	MENU_PLACEHOLDER_TEXT,
 } from "../../ui/replyKeyboards";
 import { QuestDefinition } from "../../../types/quest";
 import { UserRecord } from "../../../types/user";
+
+const BROADCAST_MESSAGE =
+	"We're aware of the issue - thank you for letting us know! The hotfix has been deployed, and the subscription quests for X and Instagram should work now. Please try again!";
+const BROADCAST_BATCH_SIZE = 10;
+const BROADCAST_DELAY_MS = 5_000;
 
 export class AdminCommandHandler {
 	register(composer: Composer<BotContext>): void {
@@ -22,6 +28,7 @@ export class AdminCommandHandler {
 		// admin UI actions
 		composer.hears(BUTTON_ADMIN_DASHBOARD, this.handleDashboard.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD, this.handleDownloadUsers.bind(this));
+		composer.hears(BUTTON_ADMIN_NOTIFY_USERS, this.handleNotifyUsers.bind(this));
 
 		// fallback aliases (як у твоєму прикладі)
 		composer.hears("ADMIN PANEL", this.handleAdminPanel.bind(this));
@@ -258,6 +265,48 @@ export class AdminCommandHandler {
 		});
 	}
 
+	private async handleNotifyUsers(ctx: BotContext): Promise<void> {
+		if (!this.assertAdmin(ctx)) return;
+
+		const repo = ctx.services.userRepository;
+		const users = await repo.listAllUsers();
+
+		if (users.length === 0) {
+			await ctx.reply("There are no users stored yet.", { reply_markup: buildAdminKeyboard() });
+			return;
+		}
+
+		await ctx.reply(`Starting broadcast to ${users.length} users. This may take a few minutes.`, {
+			reply_markup: buildAdminKeyboard(),
+		});
+
+		let sent = 0;
+		let failed = 0;
+
+		for (let index = 0; index < users.length; index += 1) {
+			const user = users[index];
+			try {
+				await ctx.api.sendMessage(user.userId, BROADCAST_MESSAGE);
+				sent += 1;
+			} catch (error) {
+				failed += 1;
+				console.error("[adminBroadcast] failed to send message", { userId: user.userId, error });
+			}
+
+			const delivered = index + 1;
+			if (delivered % BROADCAST_BATCH_SIZE === 0 && delivered < users.length) {
+				await delay(BROADCAST_DELAY_MS);
+			}
+		}
+
+		const parts = [`Broadcast complete. Delivered to ${sent} user${sent === 1 ? "" : "s"}.`];
+		if (failed > 0) {
+			parts.push(`${failed} send${failed === 1 ? "" : "s"} failed.`);
+		}
+
+		await ctx.reply(parts.join(" "), { reply_markup: buildAdminKeyboard() });
+	}
+
 	// Повернення в головне меню (використай свою вже існуючу реалізацію)
 	private async handleBackToMainMenu(ctx: BotContext): Promise<void> {
 		// Припустимо, що у тебе вже є builder головного меню:
@@ -270,4 +319,8 @@ export class AdminCommandHandler {
 			link_preview_options: { is_disabled: true },
 		});
 	}
+}
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
