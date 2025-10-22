@@ -1,7 +1,7 @@
 [
     {
         "domain": ".instagram.com",
-        "expirationDate": 1795523622.589016,
+        "expirationDate": 1795692510.330665,
         "hostOnly": false,
         "httpOnly": false,
         "name": "csrftoken",
@@ -29,7 +29,21 @@
     },
     {
         "domain": ".instagram.com",
-        "expirationDate": 1768739622.589201,
+        "expirationDate": 1761580957,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "dpr",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": "0",
+        "value": "1",
+        "id": 3
+    },
+    {
+        "domain": ".instagram.com",
+        "expirationDate": 1768908510.330864,
         "hostOnly": false,
         "httpOnly": false,
         "name": "ds_user_id",
@@ -39,7 +53,7 @@
         "session": false,
         "storeId": "0",
         "value": "7562089066",
-        "id": 3
+        "id": 4
     },
     {
         "domain": ".instagram.com",
@@ -53,7 +67,7 @@
         "session": false,
         "storeId": "0",
         "value": "52C5DEA7-6009-4BC9-A4C3-CF2FDBDF875A",
-        "id": 4
+        "id": 5
     },
     {
         "domain": ".instagram.com",
@@ -67,7 +81,7 @@
         "session": false,
         "storeId": "0",
         "value": "1",
-        "id": 5
+        "id": 6
     },
     {
         "domain": ".instagram.com",
@@ -81,7 +95,7 @@
         "session": false,
         "storeId": "0",
         "value": "aD2qtAAEAAFP8O6Q78EWHj0_qiX0",
-        "id": 6
+        "id": 7
     },
     {
         "domain": ".instagram.com",
@@ -95,7 +109,7 @@
         "session": false,
         "storeId": "0",
         "value": "1",
-        "id": 7
+        "id": 8
     },
     {
         "domain": ".instagram.com",
@@ -109,7 +123,7 @@
         "session": false,
         "storeId": "0",
         "value": "1",
-        "id": 8
+        "id": 9
     },
     {
         "domain": ".instagram.com",
@@ -121,12 +135,12 @@
         "secure": true,
         "session": true,
         "storeId": "0",
-        "value": "\"ODN\\0547562089066\\0541792499623:01fe12846415682f335c13e712fb188031ae6d868c31d24d74cb7105787c10c052a4db4c\"",
-        "id": 9
+        "value": "\"ODN\\0547562089066\\0541792668510:01feeec2a7f96be43e6540ce90fe884e8142f196adc06b9b0d520428a2021f27977c05fb\"",
+        "id": 10
     },
     {
         "domain": ".instagram.com",
-        "expirationDate": 1792499616.102456,
+        "expirationDate": 1792666045.561753,
         "hostOnly": false,
         "httpOnly": true,
         "name": "sessionid",
@@ -135,12 +149,12 @@
         "secure": true,
         "session": false,
         "storeId": "0",
-        "value": "7562089066%3A5G9p7fkLys1yF9%3A3%3AAYj4Qdqyx2EEH_gIh7hCGB1kPgkKN7PANnuPbRW0pA",
-        "id": 10
+        "value": "7562089066%3A5G9p7fkLys1yF9%3A3%3AAYgbV10spUn6RYY4ntDDBGpWPCADvhvPouaQlyKrEI4",
+        "id": 11
     },
     {
         "domain": ".instagram.com",
-        "expirationDate": 1761568415,
+        "expirationDate": 1761737251,
         "hostOnly": false,
         "httpOnly": false,
         "name": "wd",
@@ -150,6 +164,6 @@
         "session": false,
         "storeId": "0",
         "value": "1376x781",
-        "id": 11
+        "id": 12
     }
 ]
