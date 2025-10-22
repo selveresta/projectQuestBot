@@ -1,4 +1,5 @@
 import { Bot } from "grammy";
+import type { Message } from "grammy/types";
 
 import type { AppConfig } from "../config";
 import { createQuestDefinitions } from "../quests/catalog";
@@ -36,6 +37,14 @@ export class BotApplication {
 				captchaService: this.requireCaptchaService(),
 			};
 			await next();
+		});
+
+		this.bot.use(async (ctx, next) => {
+			const chatType = ctx.chat?.type;
+			if (!chatType || chatType === "private") {
+				await next();
+				return;
+			}
 		});
 
 		this.bot.use(createBotHandlers());
