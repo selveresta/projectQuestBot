@@ -367,29 +367,26 @@ export class UserRepository {
 
 	async countEligibleUsers(requiredQuestIds: QuestId[]): Promise<number> {
 		let count = 0;
-		for await (const rawKey of this.redis.scanIterator({
-			MATCH: "user:*",
-		})) {
+		for await (const rawKey of this.redis.scanIterator({ MATCH: "user:*" })) {
 			const key = String(rawKey);
-			if (!key) {
-				continue;
-			}
+			if (!key) continue;
 
 			const payload = await this.redis.get(key);
-			if (!payload) {
-				continue;
-			}
+			if (!payload) continue;
+
 			try {
-				const user = JSON.parse(payload) as UserRecord;
-				const eligible = requiredQuestIds.every((questId) => user.quests[questId]?.completed === true);
-				if (eligible && user.captchaPassed) {
+				const parsed = JSON.parse(payload) as UserRecord;
+				const normalized = this.normalizeUser(parsed);
+				if (normalized !== parsed) {
+					await this.save(normalized);
+				}
+
+				const eligible = requiredQuestIds.every((questId) => normalized.quests[questId]?.completed === true);
+				if (eligible && normalized.captchaPassed) {
 					count += 1;
 				}
 			} catch (error) {
-				console.error("[userRepository] eligibility check parse error", {
-					key: rawKey,
-					error,
-				});
+				console.error("[userRepository] eligibility check parse error", { key: rawKey, error });
 			}
 		}
 
