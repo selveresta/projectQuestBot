@@ -183,7 +183,8 @@ export class QuestService {
 	}
 
 	async countEligibleParticipants(): Promise<number> {
-		return this.userRepository.countEligibleUsers(this.mandatoryQuestIds);
+		const users = await this.userRepository.listAllUsers();
+		return users.reduce((eligible, user) => (this.isUserEligible(user) ? eligible + 1 : eligible), 0);
 	}
 
 	async getLeaderboard(limit: number): Promise<UserRecord[]> {
