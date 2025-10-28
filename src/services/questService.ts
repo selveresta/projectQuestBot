@@ -1,6 +1,6 @@
 import type { QuestDefinition, QuestId } from "../types/quest";
 import type { UserRecord } from "../types/user";
-import { UserRepository } from "./userRepository";
+import { ReferralRecalculationSummary, UserRepository } from "./userRepository";
 import { DuplicateContactError, type UniqueContactField } from "./errors";
 
 export interface QuestStatus {
@@ -28,6 +28,7 @@ const QUEST_POINT_VALUES: Partial<Record<QuestId, number>> = {
 };
 
 const REFERRAL_BONUS_POINTS = 1;
+const REFERRAL_REQUIRED_QUEST_ID: QuestId = "x_follow";
 const UNIQUE_CONTACT_FIELDS: UniqueContactField[] = ["email", "wallet", "solanaWallet", "xProfileUrl", "instagramProfileUrl"];
 const UNIQUE_CONTACT_FIELD_SET = new Set<UniqueContactField>(UNIQUE_CONTACT_FIELDS);
 type ContactField =
@@ -195,6 +196,10 @@ export class QuestService {
 		return this.userRepository.getUserRank(userId);
 	}
 
+	async recalculateReferralBonuses(): Promise<ReferralRecalculationSummary> {
+		return this.userRepository.recalculateReferralBonuses(REFERRAL_REQUIRED_QUEST_ID, REFERRAL_BONUS_POINTS);
+	}
+
 	private isUniqueContactField(field: ContactField): field is UniqueContactField {
 		return UNIQUE_CONTACT_FIELD_SET.has(field as UniqueContactField);
 	}
@@ -259,8 +264,8 @@ export class QuestService {
 			return { user };
 		}
 
-		const hasCompletedQuest = Object.values(user.quests ?? {}).some((entry) => entry?.completed);
-		if (!hasCompletedQuest) {
+		const hasCompletedRequiredQuest = user.quests?.[REFERRAL_REQUIRED_QUEST_ID]?.completed === true;
+		if (!hasCompletedRequiredQuest) {
 			return { user };
 		}
 

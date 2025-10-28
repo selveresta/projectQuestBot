@@ -7,15 +7,21 @@ import {
 	BUTTON_ADMIN_DASHBOARD,
 	BUTTON_ADMIN_DOWNLOAD,
 	BUTTON_ADMIN_NOTIFY_USERS,
+	BUTTON_ADMIN_RECALCULATE_REFERRALS,
 	BUTTON_ADMIN_PANEL,
 	BUTTON_BACK_TO_MENU,
 	MENU_PLACEHOLDER_TEXT,
 } from "../../ui/replyKeyboards";
 import { QuestDefinition } from "../../../types/quest";
 import { UserRecord } from "../../../types/user";
+import type { ReferralRecalculationSummary } from "../../../services/userRepository";
 
-const BROADCAST_MESSAGE =
-	"We're aware of the issue - thank you for letting us know! The hotfix has been deployed, and the subscription quests for X and Instagram should work now. Please try again!";
+const BROADCAST_MESSAGE = `
+We’ve recalculated referral points after detecting a large number of fake and inactive accounts.
+Apologies for the inconvenience — we’re making the system fairer for everyone.
+
+From now on, referral points will be credited only if your referral is subscribed to our X account and has verified it through the corresponding quest.`;
+
 const BROADCAST_BATCH_SIZE = 10;
 const BROADCAST_DELAY_MS = 5_000;
 
@@ -29,6 +35,7 @@ export class AdminCommandHandler {
 		composer.hears(BUTTON_ADMIN_DASHBOARD, this.handleDashboard.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD, this.handleDownloadUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_USERS, this.handleNotifyUsers.bind(this));
+		composer.hears(BUTTON_ADMIN_RECALCULATE_REFERRALS, this.handleRecalculateReferrals.bind(this));
 
 		// fallback aliases (як у твоєму прикладі)
 		composer.hears("ADMIN PANEL", this.handleAdminPanel.bind(this));
@@ -168,6 +175,20 @@ export class AdminCommandHandler {
 		return lines.join("\n");
 	}
 
+	private formatReferralRecalculationResult(summary: ReferralRecalculationSummary): string {
+		const netPoints = summary.pointsAdjustment;
+		const formattedNet = `${netPoints >= 0 ? "+" : ""}${netPoints}`;
+		const parts: string[] = [
+			"♻️ <b>Referral recalculation complete.</b>",
+			`• Users processed: ${summary.totalUsers}`,
+			`• Referrers adjusted: ${summary.referrersAdjusted}`,
+			`• Referral claims reset: ${summary.referralClaimsReset}`,
+			`• Credits removed: ${summary.removedCreditedReferrals}`,
+			`• Net point change: ${formattedNet}`,
+		];
+		return parts.join("\n");
+	}
+
 	// CSV: екранування значень (RFC4180-friendly)
 	private csvEscape(v: unknown): string {
 		if (v === null || v === undefined) return "";
@@ -305,6 +326,25 @@ export class AdminCommandHandler {
 		}
 
 		await ctx.reply(parts.join(" "), { reply_markup: buildAdminKeyboard() });
+	}
+
+	private async handleRecalculateReferrals(ctx: BotContext): Promise<void> {
+		if (!this.assertAdmin(ctx)) return;
+
+		await ctx.reply("Starting referral recalculation…", {
+			reply_markup: buildAdminKeyboard(),
+		});
+
+		try {
+			const summary = await ctx.services.questService.recalculateReferralBonuses();
+			const response = this.formatReferralRecalculationResult(summary);
+			await ctx.reply(response, { parse_mode: "HTML", reply_markup: buildAdminKeyboard() });
+		} catch (error) {
+			console.error("[adminReferralRecalc] failed to recalculate referrals", { error });
+			await ctx.reply("Failed to recalculate referral points. Check logs for more details.", {
+				reply_markup: buildAdminKeyboard(),
+			});
+		}
 	}
 
 	// Повернення в головне меню (використай свою вже існуючу реалізацію)

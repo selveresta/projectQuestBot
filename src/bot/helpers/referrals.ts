@@ -5,7 +5,7 @@ const REFERRAL_NOTIFICATION_MESSAGE = [
 	"🔔 Notification: +1 Referral",
 	"",
 	"🎉 New referral joined!",
-	"Your friend has completed their first quest — you’ve just earned +1 referral point.",
+	"Your friend has completed the X subscription quest — you’ve just earned +1 referral point.",
 	"",
 	"Keep sharing your link to climb the leaderboard and boost your rewards!",
 ].join("\n");

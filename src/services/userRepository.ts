@@ -7,6 +7,14 @@ function now(): string {
 	return new Date().toISOString();
 }
 
+export interface ReferralRecalculationSummary {
+	totalUsers: number;
+	referrersAdjusted: number;
+	referralClaimsReset: number;
+	removedCreditedReferrals: number;
+	pointsAdjustment: number;
+}
+
 export class UserRepository {
 	constructor(private readonly redis: RedisClient, private readonly questIds: QuestId[]) {}
 
@@ -391,6 +399,94 @@ export class UserRepository {
 		}
 
 		return count;
+	}
+
+	async recalculateReferralBonuses(requiredQuestId: QuestId, pointsPerReferral: number): Promise<ReferralRecalculationSummary> {
+		const users = await this.listAllUsers();
+		if (users.length === 0) {
+			return {
+				totalUsers: 0,
+				referrersAdjusted: 0,
+				referralClaimsReset: 0,
+				removedCreditedReferrals: 0,
+				pointsAdjustment: 0,
+			};
+		}
+
+		const userMap = new Map<number, UserRecord>();
+		for (const user of users) {
+			userMap.set(user.userId, user);
+		}
+
+		let referralClaimsReset = 0;
+		let removedCreditedReferrals = 0;
+		let pointsAdjustment = 0;
+		let referrersAdjusted = 0;
+		const normalizedBonus = Math.max(0, pointsPerReferral);
+
+		for (const user of users) {
+			if (!user.referredBy) {
+				continue;
+			}
+
+			const requiredQuestCompleted = user.quests?.[requiredQuestId]?.completed === true;
+			if (!requiredQuestCompleted && user.referralBonusClaimed) {
+				user.referralBonusClaimed = false;
+				user.updatedAt = now();
+				await this.save(user);
+				referralClaimsReset += 1;
+			}
+
+			userMap.set(user.userId, user);
+		}
+
+		for (const referrer of users) {
+			const credited = Array.isArray(referrer.creditedReferrals) ? [...referrer.creditedReferrals] : [];
+			if (credited.length === 0) {
+				continue;
+			}
+
+			const eligibleReferrals = credited.filter((referralId) => {
+				const referred = userMap.get(referralId);
+				if (!referred) {
+					return false;
+				}
+				const requiredQuestCompleted = referred.quests?.[requiredQuestId]?.completed === true;
+				return requiredQuestCompleted && referred.referralBonusClaimed === true;
+			});
+
+			const removedCount = credited.length - eligibleReferrals.length;
+			const currentReferralPoints = credited.length * normalizedBonus;
+			const newReferralPoints = eligibleReferrals.length * normalizedBonus;
+			const rawPoints = typeof referrer.points === "number" ? referrer.points : 0;
+			const basePoints = Math.max(0, rawPoints - currentReferralPoints);
+			const newPoints = basePoints + newReferralPoints;
+
+			const needsUpdate = removedCount > 0 || newPoints !== rawPoints;
+			if (!needsUpdate) {
+				continue;
+			}
+
+			if (removedCount > 0) {
+				removedCreditedReferrals += removedCount;
+			}
+
+			referrer.creditedReferrals = eligibleReferrals;
+			referrer.points = newPoints;
+			referrer.updatedAt = now();
+			await this.save(referrer);
+			referrersAdjusted += 1;
+			pointsAdjustment += newPoints - rawPoints;
+			userMap.set(referrer.userId, referrer);
+		}
+
+		return {
+			totalUsers: users.length,
+			referrersAdjusted,
+			referralClaimsReset,
+			removedCreditedReferrals,
+			pointsAdjustment,
+		};
 	}
 
 	async resetProgress(userId: number) {}
