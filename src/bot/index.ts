@@ -1,5 +1,4 @@
 import { Bot, GrammyError } from "grammy";
-import type { Message } from "grammy/types";
 
 import type { AppConfig } from "../config";
 import { createQuestDefinitions } from "../quests/catalog";
@@ -8,6 +7,7 @@ import { QuestService } from "../services/questService";
 import { UserRepository } from "../services/userRepository";
 import type { BotContext } from "../types/context";
 import { createBotHandlers } from "./handlers";
+import { PollingLock } from "../infra/pollingLock";
 import { acquireRedisClient, releaseRedisClient, type RedisClient } from "../infra/redis";
 
 export class BotApplication {
@@ -16,6 +16,8 @@ export class BotApplication {
 	private userRepository: UserRepository | null = null;
 	private captchaService: CaptchaService | null = null;
 	private bot: Bot<BotContext> | null = null;
+	private pollingLock: PollingLock | null = null;
+	private pollingPromise: Promise<void> | null = null;
 
 	constructor(private readonly config: AppConfig) {}
 
@@ -75,11 +77,67 @@ export class BotApplication {
 		this.bot.use(createBotHandlers());
 	}
 
-	getBot(): Bot<BotContext> {
-		return this.requireBot();
+	async start(): Promise<void> {
+		if (this.pollingPromise) {
+			throw new Error("Bot long polling already started");
+		}
+
+		const bot = this.requireBot();
+		const redisClient = this.requireRedisClient();
+		const lock = new PollingLock(redisClient);
+
+		await lock.acquire();
+		this.pollingLock = lock;
+
+		try {
+			await bot.api.deleteWebhook({ drop_pending_updates: true });
+			const pollingPromise = bot.start({
+				drop_pending_updates: true,
+				allowed_updates: ["message", "callback_query"],
+			});
+			this.pollingPromise = pollingPromise;
+
+			void pollingPromise
+				.catch((error) => {
+					console.error("[bot] long polling stopped unexpectedly", error);
+					process.exitCode = 1;
+					void this.dispose().catch((disposeError) => {
+						console.error("[bot] failed to dispose after polling error", disposeError);
+					});
+				})
+				.finally(async () => {
+					await this.pollingLock?.release();
+					this.pollingLock = null;
+					this.pollingPromise = null;
+				});
+		} catch (error) {
+			await this.pollingLock?.release();
+			this.pollingLock = null;
+			this.pollingPromise = null;
+			throw error;
+		}
+	}
+
+	async stop(): Promise<void> {
+		const pollingPromise = this.pollingPromise;
+		if (!pollingPromise) {
+			return;
+		}
+
+		const bot = this.requireBot();
+		bot.stop();
+		try {
+			await pollingPromise;
+		} catch {
+			// Already handled by the polling promise catch handler.
+		}
 	}
 
 	async dispose(): Promise<void> {
+		await this.stop();
+		await this.pollingLock?.release();
+		this.pollingLock = null;
+		this.pollingPromise = null;
 		this.bot = null;
 		this.captchaService = null;
 		this.questService = null;
