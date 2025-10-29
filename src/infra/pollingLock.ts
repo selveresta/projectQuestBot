@@ -84,7 +84,7 @@ export class PollingLock {
 				}
 				return;
 			}
-			await this.redis.pexpire(this.key, this.ttlMs);
+			await this.redis.pExpire(this.key, this.ttlMs);
 		} catch (error) {
 			console.error("[lock] failed to refresh polling lock", error);
 		}
