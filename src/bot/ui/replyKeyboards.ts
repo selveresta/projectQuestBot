@@ -40,10 +40,10 @@ export function buildWelcomeAnnouncement(): string {
 		"51–100 place — $20 + invite code",
 		"",
 		"⏰ Period:",
-		"20 October – 10 November",
+		"20 October – 17 November",
 		"",
 		"🪂 Your mission:",
-        "Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email, EVM wallet, and Solana wallet.",
+		"Follow Trady on all socials (X, Instagram, Discord, Telegram Channel & Chat), visit our website, and drop your email, EVM wallet, and Solana wallet.",
 		"",
 		"Tap “🗂 Quest list” below and start completing tasks now — every step brings you closer to the rewards.",
 	].join("\n");
