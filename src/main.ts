@@ -1,6 +1,9 @@
+import { installTimestampedConsole } from "./infra/logging";
 import { AppConfiguration } from "./config";
 import { BotApplication } from "./bot";
 import { startDiscordVerifier } from "./discord";
+
+installTimestampedConsole();
 
 async function bootstrap(): Promise<void> {
 	const config = AppConfiguration.load();

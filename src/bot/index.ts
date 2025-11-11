@@ -29,6 +29,21 @@ export class BotApplication {
 		this.questService = new QuestService(this.userRepository, questDefinitions);
 		this.captchaService = new CaptchaService();
 		this.bot = new Bot<BotContext>(this.config.botToken);
+		this.bot.catch((err) => {
+			const updateId = err.ctx?.update?.update_id;
+			if (shouldSuppressTelegramSendError(err.error)) {
+				console.warn("[bot] ignored Telegram send error", {
+					updateId,
+					chatId: err.ctx?.chat?.id ?? err.ctx?.from?.id,
+					error: err.error,
+				});
+				return;
+			}
+			console.error("[bot] error in middleware while handling update", {
+				updateId,
+				error: err.error,
+			});
+		});
 
 		this.bot.use(async (ctx, next) => {
 			const answerCallback = ctx.answerCallbackQuery.bind(ctx);
@@ -186,6 +201,21 @@ function shouldSuppressCallbackQueryError(error: unknown): boolean {
 	if (error instanceof GrammyError && typeof error.description === "string") {
 		const normalized = error.description.toLowerCase();
 		return normalized.includes("query is too old") || normalized.includes("query id is invalid");
+	}
+	return false;
+}
+
+function shouldSuppressTelegramSendError(error: unknown): boolean {
+	if (error instanceof GrammyError && typeof error.description === "string") {
+		const normalized = error.description.toLowerCase();
+		return (
+			normalized.includes("bot was blocked by the user") ||
+			normalized.includes("chat not found") ||
+			normalized.includes("user is deactivated") ||
+			normalized.includes("user is inactive") ||
+			normalized.includes("can't initiate conversation with a user") ||
+			normalized.includes("have no rights to send a message")
+		);
 	}
 	return false;
 }
