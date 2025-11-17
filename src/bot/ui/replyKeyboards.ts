@@ -12,8 +12,8 @@ export const BUTTON_BACK_TO_MENU = "⬅️ Back to menu";
 export const BUTTON_ADMIN_PANEL = "🛠 Admin panel";
 export const BUTTON_ADMIN_DASHBOARD = "📊 Admin dashboard";
 export const BUTTON_ADMIN_DOWNLOAD = "⬇️ Download users (CSV)";
-export const BUTTON_ADMIN_NOTIFY_USERS = "📢 Notify users";
-export const BUTTON_ADMIN_NOTIFY_SELF = "📨 Notify me";
+export const BUTTON_ADMIN_DOWNLOAD_WINNERS = "⬇️ Download winners (CSV)";
+export const BUTTON_ADMIN_NOTIFY_WINNERS = "🏅 Notify selected winners";
 export const BUTTON_ADMIN_RECALCULATE_REFERRALS = "♻️ Recalculate referrals";
 export const BUTTON_LEADERBOARD = "🏆 Leaderboard";
 export const BUTTON_INVITE_FRIENDS = "⏳ Invite Friends";
@@ -105,10 +105,11 @@ export function buildAdminKeyboard(): Keyboard {
 		.text(BUTTON_ADMIN_DASHBOARD)
 		.row()
 		.text(BUTTON_ADMIN_DOWNLOAD)
+		.text(BUTTON_ADMIN_DOWNLOAD_WINNERS)
+		.row()
 		.text(BUTTON_ADMIN_RECALCULATE_REFERRALS)
 		.row()
-		.text(BUTTON_ADMIN_NOTIFY_USERS)
-		.text(BUTTON_ADMIN_NOTIFY_SELF)
+		.text(BUTTON_ADMIN_NOTIFY_WINNERS)
 		.row()
 		.text(BUTTON_BACK_TO_MENU)
 		.resized()

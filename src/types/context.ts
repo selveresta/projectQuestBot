@@ -4,6 +4,7 @@ import type { AppConfig } from "../config";
 import type { RedisClient } from "../infra/redis";
 import type { CaptchaService } from "../services/captchaService";
 import type { QuestService } from "../services/questService";
+import type { WinnerService } from "../services/winnerService";
 import type { UserRepository } from "../services/userRepository";
 
 export interface BotServices {
@@ -11,6 +12,7 @@ export interface BotServices {
 	userRepository: UserRepository;
 	questService: QuestService;
 	captchaService: CaptchaService;
+	winnerService: WinnerService;
 }
 
 export type BotContext = Context & {

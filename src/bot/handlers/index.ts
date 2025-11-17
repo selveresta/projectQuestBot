@@ -11,11 +11,14 @@ import { QuestListHandler } from "./questList";
 import { SocialProfileHandler } from "./socialProfiles";
 import { LeaderboardHandler } from "./leaderboard";
 import { ReferralInviteHandler } from "./referralInvite";
+import { WinnerFlowHandler } from "./winnerFlow";
+import { GiveawayClosedHandler } from "./giveawayClosed";
 
 export class BotHandlerRegistry {
 	build(): Composer<BotContext> {
 		const composer = new Composer<BotContext>();
 		const captchaHandler = new CaptchaHandler();
+		const winnerFlowHandler = new WinnerFlowHandler();
 		const stubQuestHandler = new StubQuestHandler();
 		const startCommandHandler = new StartCommandHandler();
 		const statusCommandHandler = new StatusCommandHandler(stubQuestHandler);
@@ -25,19 +28,22 @@ export class BotHandlerRegistry {
 		const socialProfileHandler = new SocialProfileHandler();
 		const leaderboardHandler = new LeaderboardHandler();
 		const referralInviteHandler = new ReferralInviteHandler();
+		const giveawayClosedHandler = new GiveawayClosedHandler();
 
-		captchaHandler.register(composer);
-		startCommandHandler.register(composer);
-		statusCommandHandler.register(composer);
+		// captchaHandler.register(composer);
+		giveawayClosedHandler.register(composer);
+		// startCommandHandler.register(composer);
+		// statusCommandHandler.register(composer);
 		adminCommandHandler.register(composer);
-		contactHandler.register(composer);
-		questListHandler.register(composer);
-		socialProfileHandler.register(composer);
-		leaderboardHandler.register(composer);
-		referralInviteHandler.register(composer);
-		stubQuestHandler.register(composer);
+		winnerFlowHandler.register(composer);
+		// contactHandler.register(composer);
+		// questListHandler.register(composer);
+		// socialProfileHandler.register(composer);
+		// leaderboardHandler.register(composer);
+		// referralInviteHandler.register(composer);
+		// stubQuestHandler.register(composer);
 
-		composer.command("help", this.handleHelpCommand);
+		// composer.command("help", this.handleHelpCommand);
 		return composer;
 	}
 

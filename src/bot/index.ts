@@ -5,6 +5,7 @@ import { createQuestDefinitions } from "../quests/catalog";
 import { CaptchaService } from "../services/captchaService";
 import { QuestService } from "../services/questService";
 import { UserRepository } from "../services/userRepository";
+import { WinnerService } from "../services/winnerService";
 import type { BotContext } from "../types/context";
 import { createBotHandlers } from "./handlers";
 import { PollingLock } from "../infra/pollingLock";
@@ -15,6 +16,7 @@ export class BotApplication {
 	private questService: QuestService | null = null;
 	private userRepository: UserRepository | null = null;
 	private captchaService: CaptchaService | null = null;
+	private winnerService: WinnerService | null = null;
 	private bot: Bot<BotContext> | null = null;
 	private pollingLock: PollingLock | null = null;
 	private pollingPromise: Promise<void> | null = null;
@@ -25,9 +27,12 @@ export class BotApplication {
 		this.redisClient = await acquireRedisClient(this.config.redisUrl);
 		const questDefinitions = createQuestDefinitions(this.config);
 		const questIds = questDefinitions.map((definition) => definition.id);
-		this.userRepository = new UserRepository(this.redisClient, questIds);
-		this.questService = new QuestService(this.userRepository, questDefinitions);
+		const redis = this.requireRedisClient();
+		const userRepository = new UserRepository(redis, questIds);
+		this.userRepository = userRepository;
+		this.questService = new QuestService(userRepository, questDefinitions);
 		this.captchaService = new CaptchaService();
+		this.winnerService = new WinnerService(redis, userRepository);
 		this.bot = new Bot<BotContext>(this.config.botToken);
 		this.bot.catch((err) => {
 			const updateId = err.ctx?.update?.update_id;
@@ -65,6 +70,7 @@ export class BotApplication {
 				userRepository: this.requireUserRepository(),
 				questService: this.requireQuestService(),
 				captchaService: this.requireCaptchaService(),
+				winnerService: this.requireWinnerService(),
 			};
 			await next();
 		});
@@ -157,6 +163,7 @@ export class BotApplication {
 		this.captchaService = null;
 		this.questService = null;
 		this.userRepository = null;
+		this.winnerService = null;
 		await releaseRedisClient();
 		this.redisClient = null;
 	}
@@ -194,6 +201,13 @@ export class BotApplication {
 			throw new Error("Captcha service not available");
 		}
 		return this.captchaService;
+	}
+
+	private requireWinnerService(): WinnerService {
+		if (!this.winnerService) {
+			throw new Error("Winner service not available");
+		}
+		return this.winnerService;
 	}
 }
 
