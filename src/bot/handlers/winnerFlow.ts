@@ -8,12 +8,21 @@ export const WINNER_CALLBACK_PREFIX = "winner_flow:";
 const CONFIRM_ACTION = `${WINNER_CALLBACK_PREFIX}confirm`;
 const CHANGE_WALLET_ACTION = `${WINNER_CALLBACK_PREFIX}change`;
 
-export const WINNER_PROMPT_MESSAGE = "Hello, you won, you need to confirm that this is your wallet.";
+export const WINNER_PROMPT_MESSAGE = `
+Rewards will be sent within 3 hours to everyone who has successfully confirmed their participation.
+
+Those who haven’t confirmed yet — you have 48 hours to do so.
+
+Regarding invite codes for Early Access:
+
+Top 1–10 winners will receive their exclusive invite codes closer to the Early Access launch.
+
+Stay tuned — more updates soon!`;
 export const WINNER_LOCK_MESSAGE = "You have already won, wait for the award to be credited.";
 
 export function buildWinnerPromptMessage(wallet?: string): string {
 	const walletText = wallet ?? "No wallet saved yet.";
-	return [WINNER_PROMPT_MESSAGE, "", `Wallet to confirm: ${walletText}`, "", "Use the buttons below to confirm or change it."].join("\n");
+	return [WINNER_PROMPT_MESSAGE].join("\n");
 }
 
 export function createWinnerConfirmationKeyboard(): InlineKeyboard {
@@ -41,9 +50,7 @@ export class WinnerFlowHandler {
 
 		const wallet = await ctx.services.winnerService.resolveWalletHint(userId);
 		const message = buildWinnerPromptMessage(wallet);
-		await ctx.reply(message, {
-			reply_markup: createWinnerConfirmationKeyboard(),
-		});
+		await ctx.reply(message);
 	}
 
 	private async handleConfirm(ctx: BotContext): Promise<void> {
