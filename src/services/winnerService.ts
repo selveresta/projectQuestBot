@@ -82,6 +82,7 @@ export class WinnerService {
 			lastName: user.lastName,
 			email: user.email,
 			wallet: sanitizedWallet,
+			points: user.points ?? 0,
 			confirmedAt: existing?.confirmedAt ?? now(),
 			updatedAt: now(),
 		};

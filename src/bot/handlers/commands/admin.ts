@@ -150,7 +150,7 @@ export class AdminCommandHandler {
 	}
 
 	private flattenWinnersToCsv(winners: WinnerRecord[]): { filename: string; csv: string } {
-		const header = ["userId", "username", "firstName", "lastName", "email", "wallet", "confirmedAt", "updatedAt"];
+		const header = ["userId", "username", "firstName", "lastName", "email", "wallet", "points", "confirmedAt", "updatedAt"];
 		const rows = [header.map(this.csvEscape).join(",")];
 
 		for (const winner of winners) {
@@ -161,6 +161,7 @@ export class AdminCommandHandler {
 				winner.lastName ?? "",
 				winner.email ?? "",
 				winner.wallet,
+				winner.points ?? "",
 				winner.confirmedAt,
 				winner.updatedAt,
 			];
@@ -320,13 +321,31 @@ export class AdminCommandHandler {
 			return;
 		}
 
-		const winners = await ctx.services.winnerService.listWinners();
+		const winnerService = ctx.services.winnerService;
+		const userRepository = ctx.services.userRepository;
+
+		const winners = await winnerService.listWinners();
 		if (winners.length === 0) {
 			await ctx.reply("There are no confirmed winners yet.", { reply_markup: buildAdminKeyboard() });
 			return;
 		}
 
-		const { filename, csv } = this.flattenWinnersToCsv(winners);
+		const winnersWithPoints = await Promise.all(
+			winners.map(async (winner) => {
+				const user = await userRepository.get(winner.userId);
+				const points = typeof winner.points === "number" ? winner.points : user?.points ?? 0;
+				return { ...winner, points };
+			})
+		);
+		const sortedWinners = winnersWithPoints.sort((a, b) => {
+			const diff = (b.points ?? 0) - (a.points ?? 0);
+			if (diff !== 0) {
+				return diff;
+			}
+			return a.confirmedAt.localeCompare(b.confirmedAt);
+		});
+
+		const { filename, csv } = this.flattenWinnersToCsv(sortedWinners);
 		await ctx.replyWithDocument(new InputFile(Buffer.from(csv, "utf8"), filename), {
 			caption: "Confirmed winners (CSV).",
 			reply_markup: buildAdminKeyboard(),

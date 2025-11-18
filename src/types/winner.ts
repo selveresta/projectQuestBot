@@ -5,6 +5,7 @@ export interface WinnerRecord {
 	lastName?: string;
 	email?: string;
 	wallet: string;
+	points?: number;
 	confirmedAt: string;
 	updatedAt: string;
 }
