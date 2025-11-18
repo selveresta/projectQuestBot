@@ -43,10 +43,10 @@ export class WinnerFlowHandler {
 
 		const userId = ctx.from.id;
 		const alreadyWinner = await ctx.services.winnerService.hasWinner(userId);
-		if (alreadyWinner) {
-			await ctx.reply(WINNER_LOCK_MESSAGE);
-			return;
-		}
+		// if (alreadyWinner) {
+		// 	await ctx.reply(WINNER_LOCK_MESSAGE);
+		// 	return;
+		// }
 
 		const wallet = await ctx.services.winnerService.resolveWalletHint(userId);
 		const message = buildWinnerPromptMessage(wallet);
