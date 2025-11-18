@@ -406,17 +406,15 @@ export class AdminCommandHandler {
 		for (const userId of SELECTED_WINNER_IDS) {
 			try {
 				const alreadyWinner = await ctx.services.winnerService.hasWinner(userId);
-				if (alreadyWinner) {
-					await ctx.api.sendMessage(userId, WINNER_LOCK_MESSAGE);
-					sent += 1;
-					continue;
-				}
+				// if (alreadyWinner) {
+				// 	await ctx.api.sendMessage(userId, WINNER_LOCK_MESSAGE);
+				// 	sent += 1;
+				// 	continue;
+				// }
 
 				const walletHint = await ctx.services.winnerService.resolveWalletHint(userId);
 				const message = buildWinnerPromptMessage(walletHint);
-				await ctx.api.sendMessage(userId, message, {
-					reply_markup: createWinnerConfirmationKeyboard(),
-				});
+				await ctx.api.sendMessage(userId, message);
 				sent += 1;
 			} catch (error) {
 				failed += 1;
