@@ -41,8 +41,8 @@ We’re preparing to reveal the Trady release details — and members of this gi
 📅 Mark the date: December 1 — this is when Early Access officially launches.
 And pay close attention to our bot — only there we will drop a huge exclusive offer for early adopters.
 Don’t miss out — being early will matter here.`;
-const BROADCAST_BATCH_SIZE = 20;
-const BROADCAST_DELAY_MS = 1100;
+const BROADCAST_BATCH_SIZE = 29;
+const BROADCAST_DELAY_MS = 1000;
 
 type BroadcastJob = {
 	startedAt: number;
@@ -519,7 +519,12 @@ export class AdminCommandHandler {
 			});
 	}
 
-	private async runBroadcastJob(job: BroadcastJob, users: UserRecord[], ctx: BotContext, adminChatId: number): Promise<{ sent: number; failed: number }> {
+	private async runBroadcastJob(
+		job: BroadcastJob,
+		users: UserRecord[],
+		ctx: BotContext,
+		adminChatId: number
+	): Promise<{ sent: number; failed: number }> {
 		for (let index = 0; index < users.length; index += 1) {
 			const user = users[index];
 			try {
