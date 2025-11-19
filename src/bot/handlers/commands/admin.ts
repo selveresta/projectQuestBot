@@ -7,6 +7,8 @@ import {
 	BUTTON_ADMIN_DASHBOARD,
 	BUTTON_ADMIN_DOWNLOAD,
 	BUTTON_ADMIN_DOWNLOAD_WINNERS,
+	BUTTON_ADMIN_NOTIFY_SELF,
+	BUTTON_ADMIN_NOTIFY_USERS,
 	BUTTON_ADMIN_NOTIFY_WINNERS,
 	BUTTON_ADMIN_PANEL,
 	BUTTON_BACK_TO_MENU,
@@ -17,6 +19,40 @@ import { UserRecord } from "../../../types/user";
 import type { ReferralRecalculationSummary } from "../../../services/userRepository";
 import type { WinnerRecord } from "../../../types/winner";
 import { buildWinnerPromptMessage, createWinnerConfirmationKeyboard, WINNER_LOCK_MESSAGE } from "../winnerFlow";
+
+const BROADCAST_MESSAGE = `
+The giveaway has officially ended and all rewards were distributed yesterday.
+Here are the Top 10 winners from the leaderboard:
+
+@Rocky5800
+@RubelDewan10
+@Rohyus
+@Cahya_media
+@Mr_FreeMan02
+@Titinbadriyah
+@bigcryptoproject
+@mdabubakker11
+@a999901jjja
+@Yeasin_Sheikh
+
+Stay alert — a major announcement is coming soon.
+We’re preparing to reveal the Trady release details — and members of this giveaway will get a unique chance to join the platform among the first and participate in early incentive activities reserved only for early entrants.
+
+📅 Mark the date: December 1 — this is when Early Access officially launches.
+And pay close attention to our bot — only there we will drop a huge exclusive offer for early adopters.
+Don’t miss out — being early will matter here.`;
+const BROADCAST_BATCH_SIZE = 20;
+const BROADCAST_DELAY_MS = 1100;
+
+type BroadcastJob = {
+	startedAt: number;
+	startedBy?: number;
+	totalUsers: number;
+	progress: {
+		sent: number;
+		failed: number;
+	};
+};
 
 export const SELECTED_WINNER_IDS: number[] = [
 	513284964, 1302902094, 7365118678, 5224381228, 1231751391, 6956064679, 1238662534, 1621467058, 6088808135, 1236573305, 6707849504,
@@ -31,6 +67,8 @@ export const SELECTED_WINNER_IDS: number[] = [
 	1181735535,
 ];
 export class AdminCommandHandler {
+	private broadcastJob: BroadcastJob | null = null;
+
 	register(composer: Composer<BotContext>): void {
 		// entry points
 		composer.command("admin", this.handleAdminPanel.bind(this));
@@ -40,6 +78,8 @@ export class AdminCommandHandler {
 		composer.hears(BUTTON_ADMIN_DASHBOARD, this.handleDashboard.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD, this.handleDownloadUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD_WINNERS, this.handleDownloadWinners.bind(this));
+		composer.hears(BUTTON_ADMIN_NOTIFY_USERS, this.handleNotifyUsers.bind(this));
+		composer.hears(BUTTON_ADMIN_NOTIFY_SELF, this.handleNotifyAdminPreview.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_WINNERS, this.handleNotifySelectedWinners.bind(this));
 		// composer.hears(BUTTON_ADMIN_RECALCULATE_REFERRALS, this.handleRecalculateReferrals.bind(this));
 
@@ -384,6 +424,191 @@ export class AdminCommandHandler {
 		});
 	}
 
+	private async handleNotifyAdminPreview(ctx: BotContext): Promise<void> {
+		if (!this.assertAdmin(ctx)) {
+			return;
+		}
+
+		if (this.broadcastJob) {
+			await ctx.reply(this.describeBroadcastJob(this.broadcastJob), { reply_markup: buildAdminKeyboard() });
+			return;
+		}
+
+		const adminChatId = ctx.chat?.id ?? ctx.from?.id;
+		if (!adminChatId) {
+			await ctx.reply("Cannot determine where to send the preview. Try again from a private chat.", {
+				reply_markup: buildAdminKeyboard(),
+			});
+			return;
+		}
+
+		const previewUsers = this.buildPreviewBroadcastUsers(adminChatId, 10);
+		await ctx.reply(
+			[
+				`Preview broadcast queued with ${previewUsers.length} delivery attempts.`,
+				"You will receive every message yourself to mimic the full job.",
+			].join(" "),
+			{ reply_markup: buildAdminKeyboard() }
+		);
+		this.startBroadcastJob(ctx, previewUsers, adminChatId);
+	}
+
+	private async handleNotifyUsers(ctx: BotContext): Promise<void> {
+		if (!this.assertAdmin(ctx)) {
+			return;
+		}
+
+		if (this.broadcastJob) {
+			await ctx.reply(this.describeBroadcastJob(this.broadcastJob), {
+				reply_markup: buildAdminKeyboard(),
+			});
+			return;
+		}
+
+		const repo = ctx.services.userRepository;
+		const users = await repo.listAllUsers();
+		if (users.length === 0) {
+			await ctx.reply("There are no users stored yet.", { reply_markup: buildAdminKeyboard() });
+			return;
+		}
+
+		const adminChatId = ctx.chat?.id ?? ctx.from?.id;
+		if (!adminChatId) {
+			await ctx.reply("Cannot determine where to send broadcast status updates. Try again from a private chat.", {
+				reply_markup: buildAdminKeyboard(),
+			});
+			return;
+		}
+
+		await ctx.reply(
+			[
+				`Broadcast queued for ${users.length} user${users.length === 1 ? "" : "s"}.`,
+				"You will get progress updates here while it runs in the background.",
+			].join(" "),
+			{ reply_markup: buildAdminKeyboard() }
+		);
+		this.startBroadcastJob(ctx, users, adminChatId);
+	}
+
+	private startBroadcastJob(ctx: BotContext, users: UserRecord[], adminChatId: number): void {
+		const job: BroadcastJob = {
+			startedAt: Date.now(),
+			startedBy: ctx.from?.id,
+			totalUsers: users.length,
+			progress: {
+				sent: 0,
+				failed: 0,
+			},
+		};
+
+		const task = this.runBroadcastJob(job, users, ctx, adminChatId);
+		this.broadcastJob = job;
+		void task
+			.then((summary) => {
+				const message = this.formatBroadcastSummary(summary);
+				return this.safeNotifyAdmin(ctx, adminChatId, message);
+			})
+			.catch((error) => {
+				console.error("[adminBroadcast] job failed", { error });
+				return this.safeNotifyAdmin(ctx, adminChatId, "Broadcast failed. Check logs for details.");
+			})
+			.finally(() => {
+				if (this.broadcastJob === job) {
+					this.broadcastJob = null;
+				}
+			});
+	}
+
+	private async runBroadcastJob(job: BroadcastJob, users: UserRecord[], ctx: BotContext, adminChatId: number): Promise<{ sent: number; failed: number }> {
+		for (let index = 0; index < users.length; index += 1) {
+			const user = users[index];
+			try {
+				await ctx.api.sendMessage(user.userId, BROADCAST_MESSAGE);
+				job.progress.sent += 1;
+			} catch (error) {
+				job.progress.failed += 1;
+				console.error("[adminBroadcast] failed to send message", { userId: user.userId, error });
+			}
+
+			const delivered = index + 1;
+			const needsPause = delivered % BROADCAST_BATCH_SIZE === 0 && delivered < users.length;
+			if (needsPause) {
+				await this.safeNotifyAdmin(
+					ctx,
+					adminChatId,
+					this.formatBroadcastProgress(job.progress.sent, job.progress.failed, users.length)
+				);
+				await delay(BROADCAST_DELAY_MS);
+			}
+		}
+
+		return { sent: job.progress.sent, failed: job.progress.failed };
+	}
+
+	private describeBroadcastJob(job: BroadcastJob): string {
+		const elapsedSeconds = Math.floor((Date.now() - job.startedAt) / 1000);
+		const pending = Math.max(job.totalUsers - (job.progress.sent + job.progress.failed), 0);
+		const startedBy = job.startedBy ? ` by admin ${job.startedBy}` : "";
+		return [
+			`Broadcast already running${startedBy}.`,
+			this.formatBroadcastProgress(job.progress.sent, job.progress.failed, job.totalUsers),
+			`Elapsed: ${elapsedSeconds}s.`,
+			pending === 0 ? "" : `${pending} user${pending === 1 ? "" : "s"} remaining.`,
+		]
+			.filter(Boolean)
+			.join(" ");
+	}
+
+	private formatBroadcastProgress(sent: number, failed: number, total: number): string {
+		return `Progress: ${sent}/${total} delivered${failed > 0 ? `, ${failed} failed` : ""}.`;
+	}
+
+	private formatBroadcastSummary(summary: { sent: number; failed: number }): string {
+		const parts = [`Broadcast complete. Delivered to ${summary.sent} user${summary.sent === 1 ? "" : "s"}.`];
+		if (summary.failed > 0) {
+			parts.push(`${summary.failed} send${summary.failed === 1 ? "" : "s"} failed.`);
+		}
+		return parts.join(" ");
+	}
+
+	private async safeNotifyAdmin(ctx: BotContext, adminChatId: number, message: string): Promise<void> {
+		try {
+			await ctx.api.sendMessage(adminChatId, message, {
+				reply_markup: buildAdminKeyboard(),
+				link_preview_options: { is_disabled: true },
+			});
+		} catch (error) {
+			console.error("[adminBroadcast] failed to notify admin", { adminChatId, error });
+		}
+	}
+
+	private buildPreviewBroadcastUsers(adminId: number, count: number): UserRecord[] {
+		const timestamp = new Date().toISOString();
+		return Array.from({ length: count }, () => ({
+			userId: adminId,
+			username: undefined,
+			firstName: undefined,
+			lastName: undefined,
+			captchaPassed: true,
+			captchaAttempts: 0,
+			pendingCaptcha: null,
+			quests: {} as UserRecord["quests"],
+			points: 0,
+			questPoints: {},
+			referredBy: undefined,
+			referralBonusClaimed: false,
+			creditedReferrals: [],
+			email: undefined,
+			wallet: undefined,
+			solanaWallet: undefined,
+			xProfileUrl: undefined,
+			instagramProfileUrl: undefined,
+			discordUserId: undefined,
+			createdAt: timestamp,
+			updatedAt: timestamp,
+		}));
+	}
+
 	private async handleNotifySelectedWinners(ctx: BotContext): Promise<void> {
 		if (!this.assertAdmin(ctx)) {
 			return;
@@ -426,4 +651,8 @@ export class AdminCommandHandler {
 			reply_markup: buildAdminKeyboard(),
 		});
 	}
+}
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
