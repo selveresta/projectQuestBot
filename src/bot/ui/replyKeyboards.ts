@@ -13,6 +13,7 @@ export const BUTTON_ADMIN_PANEL = "🛠 Admin panel";
 export const BUTTON_ADMIN_DASHBOARD = "📊 Admin dashboard";
 export const BUTTON_ADMIN_DOWNLOAD = "⬇️ Download users (CSV)";
 export const BUTTON_ADMIN_DOWNLOAD_WINNERS = "⬇️ Download winners (CSV)";
+export const BUTTON_ADMIN_CLEANUP_USERS = "🧹 Clean unreachable users";
 export const BUTTON_ADMIN_NOTIFY_USERS = "📢 Notify users";
 export const BUTTON_ADMIN_NOTIFY_SELF = "📨 Notify me";
 export const BUTTON_ADMIN_NOTIFY_WINNERS = "🏅 Notify selected winners";
@@ -108,6 +109,8 @@ export function buildAdminKeyboard(): Keyboard {
 		.row()
 		.text(BUTTON_ADMIN_DOWNLOAD)
 		.text(BUTTON_ADMIN_DOWNLOAD_WINNERS)
+		.row()
+		.text(BUTTON_ADMIN_CLEANUP_USERS)
 		.row()
 		.text(BUTTON_ADMIN_NOTIFY_USERS)
 		.text(BUTTON_ADMIN_NOTIFY_SELF)

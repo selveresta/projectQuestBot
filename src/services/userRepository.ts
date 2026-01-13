@@ -164,6 +164,11 @@ export class UserRepository {
 		await this.redis.set(this.key(user.userId), payload);
 	}
 
+	async deleteUser(userId: number): Promise<boolean> {
+		const result = await this.redis.del(this.key(userId));
+		return result === 1;
+	}
+
 	async setCaptchaChallenge(userId: number, challenge: CaptchaChallenge): Promise<UserRecord> {
 		const user = (await this.get(userId)) ?? this.createUserRecord(userId);
 		user.pendingCaptcha = challenge;

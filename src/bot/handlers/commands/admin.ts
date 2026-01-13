@@ -1,10 +1,11 @@
-import { Composer, InputFile } from "grammy";
+import { Composer, GrammyError, InputFile } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 import {
 	buildAdminKeyboard,
 	buildMainMenuKeyboard,
 	BUTTON_ADMIN_DASHBOARD,
+	BUTTON_ADMIN_CLEANUP_USERS,
 	BUTTON_ADMIN_DOWNLOAD,
 	BUTTON_ADMIN_DOWNLOAD_WINNERS,
 	BUTTON_ADMIN_NOTIFY_SELF,
@@ -43,6 +44,9 @@ And pay close attention to our bot — only there we will drop a huge exclusive 
 Don’t miss out — being early will matter here.`;
 const BROADCAST_BATCH_SIZE = 29;
 const BROADCAST_DELAY_MS = 1000;
+const CLEANUP_BATCH_SIZE = 29;
+const CLEANUP_DELAY_MS = 1000;
+const CLEANUP_CHAT_ACTION = "typing";
 
 type BroadcastJob = {
 	startedAt: number;
@@ -50,6 +54,18 @@ type BroadcastJob = {
 	totalUsers: number;
 	progress: {
 		sent: number;
+		failed: number;
+	};
+};
+
+type CleanupJob = {
+	startedAt: number;
+	startedBy?: number;
+	totalUsers: number;
+	skippedAdmins: number;
+	progress: {
+		checked: number;
+		removed: number;
 		failed: number;
 	};
 };
@@ -68,6 +84,7 @@ export const SELECTED_WINNER_IDS: number[] = [
 ];
 export class AdminCommandHandler {
 	private broadcastJob: BroadcastJob | null = null;
+	private cleanupJob: CleanupJob | null = null;
 
 	register(composer: Composer<BotContext>): void {
 		// entry points
@@ -78,6 +95,7 @@ export class AdminCommandHandler {
 		composer.hears(BUTTON_ADMIN_DASHBOARD, this.handleDashboard.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD, this.handleDownloadUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD_WINNERS, this.handleDownloadWinners.bind(this));
+		composer.hears(BUTTON_ADMIN_CLEANUP_USERS, this.handleCleanupUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_USERS, this.handleNotifyUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_SELF, this.handleNotifyAdminPreview.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_WINNERS, this.handleNotifySelectedWinners.bind(this));
@@ -392,6 +410,183 @@ export class AdminCommandHandler {
 		});
 	}
 
+	private async handleCleanupUsers(ctx: BotContext): Promise<void> {
+		if (!this.assertAdmin(ctx)) {
+			return;
+		}
+
+		if (this.cleanupJob) {
+			await ctx.reply(this.describeCleanupJob(this.cleanupJob), { reply_markup: buildAdminKeyboard() });
+			return;
+		}
+
+		const repo = ctx.services.userRepository;
+		const users = await repo.listAllUsers();
+		if (users.length === 0) {
+			await ctx.reply("There are no users stored yet.", { reply_markup: buildAdminKeyboard() });
+			return;
+		}
+
+		const adminChatId = ctx.chat?.id ?? ctx.from?.id;
+		if (!adminChatId) {
+			await ctx.reply("Cannot determine where to send cleanup status updates. Try again from a private chat.", {
+				reply_markup: buildAdminKeyboard(),
+			});
+			return;
+		}
+
+		const adminIds = new Set(ctx.config.adminIds);
+		const targetUsers = users.filter((user) => !adminIds.has(user.userId));
+		const skippedAdmins = users.length - targetUsers.length;
+
+		if (targetUsers.length === 0) {
+			await ctx.reply("Only admin accounts are stored, nothing to clean.", { reply_markup: buildAdminKeyboard() });
+			return;
+		}
+
+		await ctx.reply(
+			[
+				`Cleanup queued for ${targetUsers.length} user${targetUsers.length === 1 ? "" : "s"}.`,
+				skippedAdmins > 0 ? `Skipped ${skippedAdmins} admin account${skippedAdmins === 1 ? "" : "s"}.` : "",
+				"You will get progress updates here while it runs in the background.",
+			]
+				.filter(Boolean)
+				.join(" "),
+			{ reply_markup: buildAdminKeyboard() }
+		);
+
+		this.startCleanupJob(ctx, targetUsers, adminChatId, skippedAdmins);
+	}
+
+	private startCleanupJob(ctx: BotContext, users: UserRecord[], adminChatId: number, skippedAdmins: number): void {
+		const job: CleanupJob = {
+			startedAt: Date.now(),
+			startedBy: ctx.from?.id,
+			totalUsers: users.length,
+			skippedAdmins,
+			progress: {
+				checked: 0,
+				removed: 0,
+				failed: 0,
+			},
+		};
+
+		const task = this.runCleanupJob(job, users, ctx, adminChatId);
+		this.cleanupJob = job;
+		void task
+			.then((summary) => {
+				const message = this.formatCleanupSummary(summary);
+				return this.safeNotifyAdmin(ctx, adminChatId, message);
+			})
+			.catch((error) => {
+				console.error("[adminCleanup] job failed", { error });
+				return this.safeNotifyAdmin(ctx, adminChatId, "Cleanup failed. Check logs for details.");
+			})
+			.finally(() => {
+				if (this.cleanupJob === job) {
+					this.cleanupJob = null;
+				}
+			});
+	}
+
+	private async runCleanupJob(
+		job: CleanupJob,
+		users: UserRecord[],
+		ctx: BotContext,
+		adminChatId: number
+	): Promise<{ checked: number; removed: number; failed: number; skippedAdmins: number }> {
+		const repo = ctx.services.userRepository;
+
+		for (let index = 0; index < users.length; index += 1) {
+			const user = users[index];
+			try {
+				await ctx.api.sendChatAction(user.userId, CLEANUP_CHAT_ACTION);
+			} catch (error) {
+				if (isTelegramUserUnavailable(error)) {
+					try {
+						const deleted = await repo.deleteUser(user.userId);
+						if (deleted) {
+							job.progress.removed += 1;
+						} else {
+							job.progress.failed += 1;
+							console.error("[adminCleanup] failed to delete user", { userId: user.userId });
+						}
+					} catch (deleteError) {
+						job.progress.failed += 1;
+						console.error("[adminCleanup] failed to delete user", { userId: user.userId, error: deleteError });
+					}
+				} else {
+					job.progress.failed += 1;
+					console.error("[adminCleanup] failed to check user", { userId: user.userId, error });
+				}
+			}
+
+			job.progress.checked += 1;
+
+			const processed = index + 1;
+			const needsPause = processed % CLEANUP_BATCH_SIZE === 0 && processed < users.length;
+			if (needsPause) {
+				await this.safeNotifyAdmin(
+					ctx,
+					adminChatId,
+					this.formatCleanupProgress(job.progress.checked, job.progress.removed, job.progress.failed, users.length)
+				);
+				await delay(CLEANUP_DELAY_MS);
+			}
+		}
+
+		return {
+			checked: job.progress.checked,
+			removed: job.progress.removed,
+			failed: job.progress.failed,
+			skippedAdmins: job.skippedAdmins,
+		};
+	}
+
+	private describeCleanupJob(job: CleanupJob): string {
+		const elapsedSeconds = Math.floor((Date.now() - job.startedAt) / 1000);
+		const pending = Math.max(job.totalUsers - job.progress.checked, 0);
+		const startedBy = job.startedBy ? ` by admin ${job.startedBy}` : "";
+		const skippedAdmins =
+			job.skippedAdmins > 0 ? `Skipped ${job.skippedAdmins} admin account${job.skippedAdmins === 1 ? "" : "s"}.` : "";
+		return [
+			`Cleanup already running${startedBy}.`,
+			this.formatCleanupProgress(job.progress.checked, job.progress.removed, job.progress.failed, job.totalUsers),
+			`Elapsed: ${elapsedSeconds}s.`,
+			pending === 0 ? "" : `${pending} user${pending === 1 ? "" : "s"} remaining.`,
+			skippedAdmins,
+		]
+			.filter(Boolean)
+			.join(" ");
+	}
+
+	private formatCleanupProgress(checked: number, removed: number, failed: number, total: number): string {
+		const parts = [`Progress: ${checked}/${total} checked`];
+		if (removed > 0) {
+			parts.push(`${removed} removed`);
+		}
+		if (failed > 0) {
+			parts.push(`${failed} failed`);
+		}
+		return `${parts.join(", ")}.`;
+	}
+
+	private formatCleanupSummary(summary: { checked: number; removed: number; failed: number; skippedAdmins: number }): string {
+		const parts = [`Cleanup complete. Checked ${summary.checked} user${summary.checked === 1 ? "" : "s"}.`];
+		parts.push(
+			summary.removed > 0
+				? `Removed ${summary.removed} user${summary.removed === 1 ? "" : "s"}.`
+				: "No users removed."
+		);
+		if (summary.failed > 0) {
+			parts.push(`${summary.failed} check${summary.failed === 1 ? "" : "s"} failed.`);
+		}
+		if (summary.skippedAdmins > 0) {
+			parts.push(`Skipped ${summary.skippedAdmins} admin account${summary.skippedAdmins === 1 ? "" : "s"}.`);
+		}
+		return parts.join(" ");
+	}
+
 	private async handleRecalculateReferrals(ctx: BotContext): Promise<void> {
 		if (!this.assertAdmin(ctx)) return;
 
@@ -656,6 +851,21 @@ export class AdminCommandHandler {
 			reply_markup: buildAdminKeyboard(),
 		});
 	}
+}
+
+function isTelegramUserUnavailable(error: unknown): boolean {
+	if (error instanceof GrammyError && typeof error.description === "string") {
+		const normalized = error.description.toLowerCase();
+		return (
+			normalized.includes("bot was blocked by the user") ||
+			normalized.includes("chat not found") ||
+			normalized.includes("user is deactivated") ||
+			normalized.includes("user is inactive") ||
+			normalized.includes("can't initiate conversation with a user") ||
+			normalized.includes("have no rights to send a message")
+		);
+	}
+	return false;
 }
 
 function delay(ms: number): Promise<void> {
