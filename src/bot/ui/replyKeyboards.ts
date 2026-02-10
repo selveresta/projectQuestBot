@@ -20,6 +20,7 @@ export const BUTTON_ADMIN_NOTIFY_WINNERS = "🏅 Notify selected winners";
 export const BUTTON_ADMIN_RECALCULATE_REFERRALS = "♻️ Recalculate referrals";
 export const BUTTON_LEADERBOARD = "🏆 Leaderboard";
 export const BUTTON_INVITE_FRIENDS = "⏳ Invite Friends";
+export const BUTTON_ADMIN_DOWNLOAD_WHITELIST = "⬇️ Download whitelist (CSV)";
 
 export const MENU_PLACEHOLDER_TEXT = "\u2063";
 
@@ -109,6 +110,8 @@ export function buildAdminKeyboard(): Keyboard {
 		.row()
 		.text(BUTTON_ADMIN_DOWNLOAD)
 		.text(BUTTON_ADMIN_DOWNLOAD_WINNERS)
+		.row()
+		.text(BUTTON_ADMIN_DOWNLOAD_WHITELIST)
 		.row()
 		.text(BUTTON_ADMIN_CLEANUP_USERS)
 		.row()

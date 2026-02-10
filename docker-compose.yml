@@ -21,7 +21,10 @@ services:
     ports:
       - "6380:6379"
     volumes:
-      - ./docker/redis/entrypoint.sh:/entrypoint.sh:ro
+      - type: bind
+        source: ./docker/redis/entrypoint.sh
+        target: /entrypoint.sh
+        read_only: true
       - ./db/data:/data
       - ./db/backups:/backups
       - ./:/project
@@ -53,7 +56,10 @@ services:
       TTL_DAYS: "7"
       BACKUP_INTERVAL: "7200"
     volumes:
-      - ./docker/backup/redis-backup.sh:/scripts/redis-backup.sh:ro
+      - type: bind
+        source: ./docker/backup/redis-backup.sh
+        target: /scripts/redis-backup.sh
+        read_only: true
       - ./db/data:/data:ro
       - ./db/backups:/backups
       - ./db/backups/logs:/var/log

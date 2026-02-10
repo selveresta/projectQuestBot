@@ -1,4 +1,4 @@
-import { Composer, GrammyError, InputFile } from "grammy";
+import { Composer, GrammyError, InlineKeyboard, InputFile } from "grammy";
 
 import type { BotContext } from "../../../types/context";
 import {
@@ -7,6 +7,7 @@ import {
 	BUTTON_ADMIN_DASHBOARD,
 	BUTTON_ADMIN_CLEANUP_USERS,
 	BUTTON_ADMIN_DOWNLOAD,
+	BUTTON_ADMIN_DOWNLOAD_WHITELIST,
 	BUTTON_ADMIN_DOWNLOAD_WINNERS,
 	BUTTON_ADMIN_NOTIFY_SELF,
 	BUTTON_ADMIN_NOTIFY_USERS,
@@ -19,29 +20,35 @@ import { QuestDefinition } from "../../../types/quest";
 import { UserRecord } from "../../../types/user";
 import type { ReferralRecalculationSummary } from "../../../services/userRepository";
 import type { WinnerRecord } from "../../../types/winner";
-import { buildWinnerPromptMessage, createWinnerConfirmationKeyboard, WINNER_LOCK_MESSAGE } from "../winnerFlow";
+import { buildWinnerPromptMessage } from "../winnerFlow";
+import {
+	beginWhitelistEmailCapture,
+	finishWhitelistEmailCapture,
+	isAwaitingWhitelistEmail,
+	isValidWhitelistEmail,
+	WHITELIST_JOIN_CALLBACK,
+	WHITELIST_SUBSCRIPTIONS_KEY,
+} from "../whitelistFlow";
 
 const BROADCAST_MESSAGE = `
-The giveaway has officially ended and all rewards were distributed yesterday.
-Here are the Top 10 winners from the leaderboard:
+<b>Trady is almost ready.</b>
 
-@Rocky5800
-@RubelDewan10
-@Rohyus
-@Cahya_media
-@Mr_FreeMan02
-@Titinbadriyah
-@bigcryptoproject
-@mdabubakker11
-@a999901jjja
-@Yeasin_Sheikh
+Early Access is strictly capped.
 
-Stay alert — a major announcement is coming soon.
-We’re preparing to reveal the Trady release details — and members of this giveaway will get a unique chance to join the platform among the first and participate in early incentive activities reserved only for early entrants.
+The only guaranteed way in is the whitelist.
 
-📅 Mark the date: December 1 — this is when Early Access officially launches.
-And pay close attention to our bot — only there we will drop a huge exclusive offer for early adopters.
-Don’t miss out — being early will matter here.`;
+<b>Early Access benefits:</b>
+Negative trading fees from day one
+Lifetime upgraded user tier with discounted trading fees
+
+Miss the waitlist → no early access.
+Public release comes later.
+
+👇 <b>Tap the button below</b>
+Join the whitelist and leave your email to lock your Early Access key.
+
+First in trades first.
+The rest wait.`;
 const BROADCAST_BATCH_SIZE = 29;
 const BROADCAST_DELAY_MS = 1000;
 const CLEANUP_BATCH_SIZE = 29;
@@ -70,6 +77,13 @@ type CleanupJob = {
 	};
 };
 
+type WhitelistSubscription = {
+	userId: number;
+	email: string;
+	username: string;
+	name: string;
+};
+
 export const SELECTED_WINNER_IDS: number[] = [
 	513284964, 1302902094, 7365118678, 5224381228, 1231751391, 6956064679, 1238662534, 1621467058, 6088808135, 1236573305, 6707849504,
 	687610344, 1359095406, 1055544063, 5999803625, 5462769788, 6708650445, 6053050854, 7400298705, 1297389573, 6301237469, 6235803692,
@@ -95,10 +109,13 @@ export class AdminCommandHandler {
 		composer.hears(BUTTON_ADMIN_DASHBOARD, this.handleDashboard.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD, this.handleDownloadUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_DOWNLOAD_WINNERS, this.handleDownloadWinners.bind(this));
+		composer.hears(BUTTON_ADMIN_DOWNLOAD_WHITELIST, this.handleDownloadWhitelistSubscriptions.bind(this));
 		composer.hears(BUTTON_ADMIN_CLEANUP_USERS, this.handleCleanupUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_USERS, this.handleNotifyUsers.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_SELF, this.handleNotifyAdminPreview.bind(this));
 		composer.hears(BUTTON_ADMIN_NOTIFY_WINNERS, this.handleNotifySelectedWinners.bind(this));
+		composer.callbackQuery(WHITELIST_JOIN_CALLBACK, this.handleWhitelistJoinRequest.bind(this));
+		composer.on("message:text", this.handlePotentialWhitelistEmailInput.bind(this));
 		// composer.hears(BUTTON_ADMIN_RECALCULATE_REFERRALS, this.handleRecalculateReferrals.bind(this));
 
 		// fallback aliases (як у твоєму прикладі)
@@ -228,6 +245,19 @@ export class AdminCommandHandler {
 
 		const csv = rows.join("\n");
 		const filename = `winners_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+		return { filename, csv };
+	}
+
+	private flattenWhitelistSubscriptionsToCsv(subscriptions: WhitelistSubscription[]): { filename: string; csv: string } {
+		const header = ["userId", "username", "name", "email"];
+		const rows = [header.map(this.csvEscape).join(",")];
+
+		for (const subscription of subscriptions) {
+			rows.push([subscription.userId, subscription.username, subscription.name, subscription.email].map(this.csvEscape).join(","));
+		}
+
+		const csv = rows.join("\n");
+		const filename = `whitelist_subscriptions_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
 		return { filename, csv };
 	}
 
@@ -406,6 +436,24 @@ export class AdminCommandHandler {
 		const { filename, csv } = this.flattenWinnersToCsv(sortedWinners);
 		await ctx.replyWithDocument(new InputFile(Buffer.from(csv, "utf8"), filename), {
 			caption: "Confirmed winners (CSV).",
+			reply_markup: buildAdminKeyboard(),
+		});
+	}
+
+	private async handleDownloadWhitelistSubscriptions(ctx: BotContext): Promise<void> {
+		if (!this.assertAdmin(ctx)) {
+			return;
+		}
+
+		const subscriptions = await this.listWhitelistSubscriptions(ctx);
+		if (subscriptions.length === 0) {
+			await ctx.reply("Whitelist subscriptions are empty.", { reply_markup: buildAdminKeyboard() });
+			return;
+		}
+
+		const { filename, csv } = this.flattenWhitelistSubscriptionsToCsv(subscriptions);
+		await ctx.replyWithDocument(new InputFile(Buffer.from(csv, "utf8"), filename), {
+			caption: `Whitelist subscriptions from Redis key "${WHITELIST_SUBSCRIPTIONS_KEY}".`,
 			reply_markup: buildAdminKeyboard(),
 		});
 	}
@@ -648,6 +696,70 @@ export class AdminCommandHandler {
 		this.startBroadcastJob(ctx, previewUsers, adminChatId);
 	}
 
+	private async handleWhitelistJoinRequest(ctx: BotContext): Promise<void> {
+		const userId = ctx.from?.id;
+		if (!userId) {
+			await ctx.answerCallbackQuery();
+			return;
+		}
+
+		await beginWhitelistEmailCapture(ctx, userId);
+		await ctx.answerCallbackQuery({ text: "Send your email in the next message." });
+
+		const existingPayload = await ctx.services.redis.hGet(WHITELIST_SUBSCRIPTIONS_KEY, String(userId));
+		const existingSubscription = existingPayload ? this.parseWhitelistSubscriptionEntry(String(userId), existingPayload) : null;
+		const promptLines = [
+			"✉️ Please send your email to join the whitelist.",
+			existingSubscription ? `Current email: ${existingSubscription.email}` : "",
+		].filter(Boolean);
+		await ctx.reply(promptLines.join("\n"));
+	}
+
+	private async handlePotentialWhitelistEmailInput(ctx: BotContext, next: () => Promise<void>): Promise<void> {
+		if (!ctx.from) {
+			await next();
+			return;
+		}
+
+		const userId = ctx.from.id;
+		const awaitingEmail = await isAwaitingWhitelistEmail(ctx, userId);
+		if (!awaitingEmail) {
+			await next();
+			return;
+		}
+
+		const text = ctx.message?.text?.trim();
+		if (!text) {
+			await ctx.reply("Please send your email as text.");
+			return;
+		}
+
+		if (text.startsWith("/")) {
+			await next();
+			return;
+		}
+
+		if (!isValidWhitelistEmail(text)) {
+			await ctx.reply("That does not look like a valid email. Please try again.");
+			return;
+		}
+
+		try {
+			const username = (ctx.from.username ?? "").trim();
+			const name = [ctx.from.first_name, ctx.from.last_name]
+				.map((value) => (typeof value === "string" ? value.trim() : ""))
+				.filter(Boolean)
+				.join(" ");
+			const payload = JSON.stringify({ email: text, username, name });
+			await ctx.services.redis.hSet(WHITELIST_SUBSCRIPTIONS_KEY, String(userId), payload);
+			await finishWhitelistEmailCapture(ctx, userId);
+			await ctx.reply("✅ Email saved. You are in the whitelist.");
+		} catch (error) {
+			console.error("[whitelist] failed to store email", { userId, error });
+			await ctx.reply("Failed to save your email right now. Please try again.");
+		}
+	}
+
 	private async handleNotifyUsers(ctx: BotContext): Promise<void> {
 		if (!this.assertAdmin(ctx)) {
 			return;
@@ -723,7 +835,11 @@ export class AdminCommandHandler {
 		for (let index = 0; index < users.length; index += 1) {
 			const user = users[index];
 			try {
-				await ctx.api.sendMessage(user.userId, BROADCAST_MESSAGE);
+				await ctx.api.sendMessage(user.userId, BROADCAST_MESSAGE, {
+					parse_mode: "HTML",
+					reply_markup: this.buildWhitelistJoinKeyboard(),
+					link_preview_options: { is_disabled: true },
+				});
 				job.progress.sent += 1;
 			} catch (error) {
 				job.progress.failed += 1;
@@ -769,6 +885,51 @@ export class AdminCommandHandler {
 			parts.push(`${summary.failed} send${summary.failed === 1 ? "" : "s"} failed.`);
 		}
 		return parts.join(" ");
+	}
+
+	private async listWhitelistSubscriptions(ctx: BotContext): Promise<WhitelistSubscription[]> {
+		const entries = await ctx.services.redis.hGetAll(WHITELIST_SUBSCRIPTIONS_KEY);
+		const subscriptions: WhitelistSubscription[] = [];
+
+		for (const [userIdRaw, rawPayload] of Object.entries(entries)) {
+			const parsed = this.parseWhitelistSubscriptionEntry(userIdRaw, rawPayload);
+			if (parsed) {
+				subscriptions.push(parsed);
+			}
+		}
+
+		subscriptions.sort((a, b) => a.userId - b.userId);
+		return subscriptions;
+	}
+
+	private parseWhitelistSubscriptionEntry(userIdRaw: string, rawPayload: string): WhitelistSubscription | null {
+		const userId = Number(userIdRaw);
+		if (!Number.isFinite(userId)) {
+			return null;
+		}
+
+		const payload = rawPayload.trim();
+		if (!payload) {
+			return null;
+		}
+
+		try {
+			const parsed = JSON.parse(payload) as Partial<Record<"email" | "username" | "name", unknown>>;
+			const email = typeof parsed.email === "string" ? parsed.email.trim() : "";
+			if (!email) {
+				return null;
+			}
+			const username = typeof parsed.username === "string" ? parsed.username.trim() : "";
+			const name = typeof parsed.name === "string" ? parsed.name.trim() : "";
+			return { userId, email, username, name };
+		} catch {
+			// Backward compatibility for early entries saved as plain email strings.
+			return { userId, email: payload, username: "", name: "" };
+		}
+	}
+
+	private buildWhitelistJoinKeyboard(): InlineKeyboard {
+		return new InlineKeyboard().text("Join Whitelist", WHITELIST_JOIN_CALLBACK);
 	}
 
 	private async safeNotifyAdmin(ctx: BotContext, adminChatId: number, message: string): Promise<void> {

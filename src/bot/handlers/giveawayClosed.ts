@@ -3,6 +3,7 @@ import { Composer } from "grammy";
 import type { BotContext } from "../../types/context";
 import { BUTTON_ADMIN_PANEL } from "../ui/replyKeyboards";
 import { WINNER_CALLBACK_PREFIX } from "./winnerFlow";
+import { isAwaitingWhitelistEmail, WHITELIST_JOIN_CALLBACK } from "./whitelistFlow";
 
 export const GIVEAWAY_ENDED_MESSAGE = "Hello! The giveaway has ended. Thanks for participating.";
 
@@ -34,13 +35,20 @@ export class GiveawayClosedHandler {
 		}
 
 		const callbackData = ctx.update.callback_query?.data;
-		if (typeof callbackData === "string" && callbackData.startsWith(WINNER_CALLBACK_PREFIX)) {
+		if (
+			typeof callbackData === "string" &&
+			(callbackData.startsWith(WINNER_CALLBACK_PREFIX) || callbackData === WHITELIST_JOIN_CALLBACK)
+		) {
 			return true;
 		}
 
 		if (text) {
 			const awaitingWinnerWallet = await ctx.services.winnerService.isAwaitingWallet(userId);
 			if (awaitingWinnerWallet) {
+				return true;
+			}
+			const awaitingWhitelistEmail = await isAwaitingWhitelistEmail(ctx, userId);
+			if (awaitingWhitelistEmail) {
 				return true;
 			}
 		}
