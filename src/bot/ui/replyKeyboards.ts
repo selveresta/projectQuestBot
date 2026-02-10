@@ -72,35 +72,13 @@ export function buildReferralInviteMessage(referralsCount: number, referralLink:
 	].join("\n");
 }
 
-export function buildMainMenuKeyboard(config?: AppConfig, adminId?: number): Keyboard {
-	const keyboard = new Keyboard().text(BUTTON_QUEST_LIST);
-	const socialButtons: string[] = [];
-
-	if (!config || config.links.instagramProfileUrl) {
-		socialButtons.push(BUTTON_SET_INSTAGRAM);
-	}
-	if (!config || config.links.xProfileUrl) {
-		socialButtons.push(BUTTON_SET_X);
+export function buildMainMenuKeyboard(config?: AppConfig, userId?: number): Keyboard | { remove_keyboard: true } {
+	const isAdmin = Boolean(config && userId && config.adminIds.includes(userId));
+	if (!isAdmin) {
+		return { remove_keyboard: true };
 	}
 
-	// if (!config || config.links.discordInviteUrl) {
-	// 	socialButtons.push(BUTTON_SET_DISCORD);
-	// }
-
-	if (!config || (adminId && config.adminIds.includes(adminId))) {
-		socialButtons.push(BUTTON_ADMIN_PANEL);
-	}
-
-	if (socialButtons.length > 0) {
-		keyboard.row();
-		socialButtons.forEach((label) => {
-			keyboard.text(label);
-		});
-	}
-
-	keyboard.row().text(BUTTON_INVITE_FRIENDS).text(BUTTON_CHECK_STATUS);
-	keyboard.row().text(BUTTON_LEADERBOARD).text(BUTTON_ABOUT);
-	return keyboard.resized().persistent();
+	return new Keyboard().text(BUTTON_ADMIN_PANEL).resized().persistent();
 }
 
 // Побудова адмін-клавіатури

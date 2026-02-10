@@ -1,21 +1,59 @@
 import { Composer } from "grammy";
 
 import type { BotContext } from "../../types/context";
-import { BUTTON_ADMIN_PANEL } from "../ui/replyKeyboards";
+import {
+	BUTTON_ABOUT,
+	BUTTON_ADMIN_PANEL,
+	BUTTON_CHECK_STATUS,
+	BUTTON_INVITE_FRIENDS,
+	BUTTON_LEADERBOARD,
+	BUTTON_QUEST_LIST,
+	BUTTON_SET_INSTAGRAM,
+	BUTTON_SET_X,
+	MENU_PLACEHOLDER_TEXT,
+	buildMainMenuKeyboard,
+} from "../ui/replyKeyboards";
 import { WINNER_CALLBACK_PREFIX } from "./winnerFlow";
 import { isAwaitingWhitelistEmail, WHITELIST_JOIN_CALLBACK } from "./whitelistFlow";
 
 export const GIVEAWAY_ENDED_MESSAGE = "Hello! The giveaway has ended. Thanks for participating.";
+const LEGACY_USER_MENU_BUTTONS = new Set<string>([
+	BUTTON_QUEST_LIST,
+	BUTTON_SET_INSTAGRAM,
+	BUTTON_SET_X,
+	BUTTON_CHECK_STATUS,
+	BUTTON_INVITE_FRIENDS,
+	BUTTON_LEADERBOARD,
+	BUTTON_ABOUT,
+]);
 
 export class GiveawayClosedHandler {
 	register(composer: Composer<BotContext>): void {
 		composer.use(async (ctx, next) => {
+			if (this.isLegacyUserMenuTap(ctx)) {
+				await this.refreshMainMenu(ctx);
+				return;
+			}
+
 			if (await this.shouldBypass(ctx)) {
 				await next();
 				return;
 			}
 
 			await this.sendGiveawayNotice(ctx);
+		});
+	}
+
+	private isLegacyUserMenuTap(ctx: BotContext): boolean {
+		const text = ctx.message?.text?.trim();
+		return Boolean(text && LEGACY_USER_MENU_BUTTONS.has(text));
+	}
+
+	private async refreshMainMenu(ctx: BotContext): Promise<void> {
+		const userId = ctx.from?.id ?? ctx.chat?.id;
+		await ctx.reply(MENU_PLACEHOLDER_TEXT, {
+			reply_markup: buildMainMenuKeyboard(ctx.config, userId),
+			link_preview_options: { is_disabled: true },
 		});
 	}
 
