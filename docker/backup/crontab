@@ -1,2 +1,0 @@
-# Run redis backup every hour at minute 5
-5 * * * * /bin/sh /scripts/redis-backup.sh >> /var/log/redis-backup.log 2>&1

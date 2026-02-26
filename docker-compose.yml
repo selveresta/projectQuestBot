@@ -4,62 +4,23 @@ services:
   redis:
     image: redis:7.2-alpine
     restart: unless-stopped
-    entrypoint:
-      - /bin/sh
-      - /entrypoint.sh
-    command:
-      [
-        "redis-server",
-        "--save",
-        "60",
-        "1",
-        "--appendonly",
-        "yes",
-        "--dir",
-        "/data",
-      ]
     ports:
       - "6380:6379"
-    volumes:
-      - type: bind
-        source: ./docker/redis/entrypoint.sh
-        target: /entrypoint.sh
-        read_only: true
-      - ./db/data:/data
-      - ./db/backups:/backups
-      - ./:/project
-    environment:
-      BACKUP_DIR: /backups
-      DATA_DIR: /data
-      PROJECT_DIR: /project
+    command: ["redis-server", "--appendonly", "yes"]
 
-  redis-backup:
-    image: redis:7.2-alpine
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
-    entrypoint: /bin/sh
-    command:
-      - -c
-      - >
-        mkdir -p /var/log &&
-        while true; do
-          echo "[$$(date '+%Y-%m-%d %H:%M:%S')] running redis backup" >> /var/log/redis-backup.log;
-          /bin/sh /scripts/redis-backup.sh >> /var/log/redis-backup.log 2>&1;
-          sleep ${BACKUP_INTERVAL:-7200};
-        done
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      BACKUP_DIR: /backups
-      DATA_FILE: /data/dump.rdb
-      TTL_DAYS: "7"
-      BACKUP_INTERVAL: "7200"
-    volumes:
-      - type: bind
-        source: ./docker/backup/redis-backup.sh
-        target: /scripts/redis-backup.sh
-        read_only: true
-      - ./db/data:/data:ro
-      - ./db/backups:/backups
-      - ./db/backups/logs:/var/log
+      NODE_ENV: production
+      PORT: 3000
+      BOT_TOKEN: ${BOT_TOKEN}
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
+    ports:
+      - "3000:3000"
