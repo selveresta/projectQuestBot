@@ -1,40 +1,29 @@
-import { installTimestampedConsole } from "./infra/logging";
-import { AppConfiguration } from "./config";
-import { BotApplication } from "./bot";
-import { startDiscordVerifier } from "./discord";
+import "reflect-metadata";
 
-installTimestampedConsole();
+import { NestFactory } from "@nestjs/core";
+
+import { AppModule } from "./app.module";
+import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
+import { HttpLoggingInterceptor } from "./common/interceptors/http-logging.interceptor";
+import { PinoLoggerService } from "./common/logger/pino-logger.service";
+import { AppConfigService } from "./modules/config/app-config.service";
 
 async function bootstrap(): Promise<void> {
-	const config = AppConfiguration.load();
-	const application = new BotApplication(config);
-	await application.initialise();
-	const stop = async () => {
-		try {
-			await application.dispose();
-		} catch (error) {
-			console.error("Error while disposing application", error);
-		}
-	};
+	const app = await NestFactory.create(AppModule, { bufferLogs: true });
+	const logger = app.get(PinoLoggerService);
+	const config = app.get(AppConfigService);
 
-	process.once("SIGINT", stop);
-	process.once("SIGTERM", stop);
+	app.useLogger(logger);
+	app.useGlobalFilters(app.get(GlobalExceptionFilter));
+	app.useGlobalInterceptors(app.get(HttpLoggingInterceptor));
+	app.enableShutdownHooks();
 
-	startDiscordVerifier().catch((error) => {
-		console.error("[discord] fatal error", error);
-		process.exitCode = 1;
-	});
-
-	try {
-		await application.start();
-	} catch (error) {
-		console.error("Failed to start bot", error);
-		process.exitCode = 1;
-		await application.dispose();
-	}
+	await app.listen(config.httpPort, "0.0.0.0");
+	logger.log(`HTTP server started on port ${config.httpPort} in ${config.nodeEnv} mode`);
 }
 
-bootstrap().catch((error) => {
+void bootstrap().catch((error: unknown) => {
+	// eslint-disable-next-line no-console
 	console.error("Fatal startup error", error);
-	process.exitCode = 1;
+	process.exit(1);
 });
