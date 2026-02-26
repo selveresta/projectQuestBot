@@ -1,28 +1,31 @@
 {
-  "name": "project-quest-bot",
+  "name": "project-campaign-bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/main.js",
   "license": "MIT",
+  "packageManager": "pnpm@10.5.2",
   "scripts": {
-    "dev": "ts-node src/main.ts",
-    "build": "rimraf ./dist && tsc --project tsconfig.json --outDir dist && cp src/x_ig_scripts/*.json dist/x_ig_scripts/",
-    "start": "node dist/main.js"
+    "dev": "NODE_ENV=development ts-node src/main.ts",
+    "build": "rimraf ./dist && tsc --project tsconfig.json",
+    "start": "NODE_ENV=production node dist/main.js",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
-    "rimraf": "6.0.1",
-    "axios": "^1.7.7",
-    "discord.js": "^14.23.2",
+    "@nestjs/common": "^11.0.12",
+    "@nestjs/core": "^11.0.12",
+    "@nestjs/platform-express": "^11.0.12",
     "dotenv": "^17.2.3",
     "grammy": "^1.38.3",
-    "puppeteer": "^23.6.1",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.1",
+    "pino": "^9.7.0",
     "redis": "^5.8.3",
-    "which": "^4.0.0"
+    "reflect-metadata": "^0.2.2",
+    "rimraf": "6.0.1",
+    "rxjs": "^7.8.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^24.7.0",
-    "@types/which": "^3.0.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
