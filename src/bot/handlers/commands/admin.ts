@@ -31,24 +31,26 @@ import {
 } from "../whitelistFlow";
 
 const BROADCAST_MESSAGE = `
-<b>Trady is almost ready.</b>
+<b>Trady Beta – Paid Bug Bounty</b>
 
-Early Access is strictly capped.
+We’re opening Trady to a small group of real traders before Early Access.
 
-The only guaranteed way in is the whitelist.
+This is not a whitelist.
+This is a paid testing round.
 
-<b>Early Access benefits:</b>
-Negative trading fees from day one
-Lifetime upgraded user tier with discounted trading fees
+Your job:
+• trade hard
+• break things
+• send raw, actionable feedback
 
-Miss the waitlist → no early access.
-Public release comes later.
+Reward: <b>$500–$1,500 per qualified report.</b>
 
-👇 <b>Tap the button below</b>
-Join the whitelist and leave your email to lock your Early Access key.
+If you trade daily and know how good infra should feel - this is for you.
 
-First in trades first.
-The rest wait.`;
+Apply here:
+https://forms.gle/DdhgrigW7HYsMhyY6
+
+Selected testers will get direct access instructions.`;
 const BROADCAST_BATCH_SIZE = 29;
 const BROADCAST_DELAY_MS = 1000;
 const CLEANUP_BATCH_SIZE = 29;
@@ -837,7 +839,6 @@ export class AdminCommandHandler {
 			try {
 				await ctx.api.sendMessage(user.userId, BROADCAST_MESSAGE, {
 					parse_mode: "HTML",
-					reply_markup: this.buildWhitelistJoinKeyboard(),
 					link_preview_options: { is_disabled: true },
 				});
 				job.progress.sent += 1;
