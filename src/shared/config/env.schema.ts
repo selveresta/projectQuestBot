@@ -30,7 +30,6 @@ export const EnvSchema = z.object({
 	TELEGRAM_DROP_PENDING_UPDATES: BooleanFromStringSchema.default(true),
 	TELEGRAM_SESSION_ENABLED: BooleanFromStringSchema.default(false),
 	IDEMPOTENCY_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
-	REFERRAL_POINTS: z.coerce.number().int().nonnegative().default(1),
 	LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 

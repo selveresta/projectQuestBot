@@ -88,10 +88,6 @@ export class AppConfigService {
 		return this.env.IDEMPOTENCY_TTL_SECONDS;
 	}
 
-	get referralPoints(): number {
-		return this.env.REFERRAL_POINTS;
-	}
-
 	get logLevel(): LevelWithSilent {
 		return this.env.LOG_LEVEL;
 	}

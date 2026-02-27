@@ -29,8 +29,6 @@ export class StatusCommandHandler implements TelegramCommandHandler {
 				[
 					`Identity: ${profile.identityId}`,
 					`Telegram ID: ${profile.telegramIdentityId}`,
-					`Points: ${profile.points}`,
-					`Referred by: ${profile.referredBy ?? "none"}`,
 				].join("\n"),
 			);
 		} catch (error) {

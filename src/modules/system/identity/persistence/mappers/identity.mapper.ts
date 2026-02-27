@@ -9,10 +9,6 @@ export type RedisIdentityHash = Record<string, string> & {
 	username: string;
 	first_name: string;
 	last_name: string;
-	points: string;
-	referred_by: string;
-	referral_bonus_claimed: "0" | "1";
-	credited_referrals: string;
 	created_at: string;
 	updated_at: string;
 };
@@ -23,9 +19,6 @@ export interface PostgresIdentityRow {
 	username: string | null;
 	first_name: string | null;
 	last_name: string | null;
-	points: number;
-	referred_by: string | null;
-	referral_bonus_claimed: boolean;
 	created_at: string;
 	updated_at: string;
 }
@@ -38,10 +31,6 @@ export function identityToRedisHash(identity: IdentityEntity): RedisIdentityHash
 		username: snapshot.username ?? "",
 		first_name: snapshot.firstName ?? "",
 		last_name: snapshot.lastName ?? "",
-		points: String(snapshot.points),
-		referred_by: snapshot.referredBy ?? "",
-		referral_bonus_claimed: snapshot.referralBonusClaimed ? "1" : "0",
-		credited_referrals: JSON.stringify(snapshot.creditedReferralIds),
 		created_at: snapshot.createdAt,
 		updated_at: snapshot.updatedAt,
 	};
@@ -54,17 +43,12 @@ export function redisHashToIdentity(hash: Record<string, string>): IdentityEntit
 		return null;
 	}
 
-	const credits = parseCredits(hash.credited_referrals);
 	return IdentityEntity.rehydrate({
 		id: toIdentityId(hash.id),
 		telegramIdentityId: toTelegramIdentityId(Number.parseInt(telegramIdentityRaw, 10)),
 		username: hash.username || undefined,
 		firstName: hash.first_name || undefined,
 		lastName: hash.last_name || undefined,
-		points: Number.parseInt(hash.points || "0", 10),
-		referredBy: hash.referred_by ? toIdentityId(hash.referred_by) : undefined,
-		referralBonusClaimed: hash.referral_bonus_claimed === "1",
-		creditedReferralIds: credits,
 		createdAt: toIsoDateString(hash.created_at),
 		updatedAt: toIsoDateString(hash.updated_at),
 	});
@@ -78,43 +62,19 @@ export function identityToPostgresRow(identity: IdentityEntity): PostgresIdentit
 		username: snapshot.username ?? null,
 		first_name: snapshot.firstName ?? null,
 		last_name: snapshot.lastName ?? null,
-		points: snapshot.points,
-		referred_by: snapshot.referredBy ?? null,
-		referral_bonus_claimed: snapshot.referralBonusClaimed,
 		created_at: snapshot.createdAt,
 		updated_at: snapshot.updatedAt,
 	};
 }
 
-export function postgresRowToIdentity(row: PostgresIdentityRow, creditedReferrals: readonly string[]): IdentityEntity {
+export function postgresRowToIdentity(row: PostgresIdentityRow): IdentityEntity {
 	return IdentityEntity.rehydrate({
 		id: toIdentityId(row.id),
 		telegramIdentityId: toTelegramIdentityId(Number.parseInt(row.telegram_id, 10)),
 		username: row.username ?? undefined,
 		firstName: row.first_name ?? undefined,
 		lastName: row.last_name ?? undefined,
-		points: row.points,
-		referredBy: row.referred_by ? toIdentityId(row.referred_by) : undefined,
-		referralBonusClaimed: row.referral_bonus_claimed,
-		creditedReferralIds: creditedReferrals.map((value) => toIdentityId(value)),
 		createdAt: toIsoDateString(row.created_at),
 		updatedAt: toIsoDateString(row.updated_at),
 	});
-}
-
-function parseCredits(raw: string | undefined): ReturnType<typeof toIdentityId>[] {
-	if (!raw) {
-		return [];
-	}
-	try {
-		const parsed = JSON.parse(raw) as unknown;
-		if (!Array.isArray(parsed)) {
-			return [];
-		}
-		return parsed
-			.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-			.map((item) => toIdentityId(item));
-	} catch {
-		return [];
-	}
 }

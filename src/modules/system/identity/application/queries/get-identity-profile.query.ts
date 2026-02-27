@@ -10,8 +10,6 @@ const PROFILE_CACHE_TTL_SECONDS = 45;
 export interface IdentityProfileView {
 	identityId: string;
 	telegramIdentityId: number;
-	points: number;
-	referredBy?: string;
 }
 
 export class GetIdentityProfileQuery {
@@ -51,8 +49,6 @@ export class GetIdentityProfileQueryHandler {
 		const profile: IdentityProfileView = {
 			identityId: identity.id,
 			telegramIdentityId: identity.telegramIdentityId,
-			points: identity.points,
-			referredBy: identity.referredBy,
 		};
 
 		await this.cache.set(cacheKey, profile, PROFILE_CACHE_TTL_SECONDS);

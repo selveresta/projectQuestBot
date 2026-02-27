@@ -15,14 +15,12 @@ export class RegisterTelegramIdentityCommand {
 		readonly username?: string,
 		readonly firstName?: string,
 		readonly lastName?: string,
-		readonly referrerTelegramIdentityId?: number,
 	) {}
 }
 
 export interface RegisterTelegramIdentityResult {
 	identity: IdentityEntity;
 	event?: IdentityRegisteredDomainEvent;
-	referralRejectedReason?: "self_referral" | "referrer_not_found";
 }
 
 @Injectable()
@@ -48,13 +46,9 @@ export class RegisterTelegramIdentityCommandHandler {
 				},
 				now,
 			);
-
-			const referralApplied = await this.tryAssignReferrer(updated, command.referrerTelegramIdentityId, now);
-			const finalIdentity = await this.applyReferralCreditIfNeeded(referralApplied.identity, now);
-			await this.identityRepository.save(finalIdentity);
+			await this.identityRepository.save(updated);
 			return {
-				identity: finalIdentity,
-				referralRejectedReason: referralApplied.rejectedReason,
+				identity: updated,
 			};
 		}
 
@@ -69,66 +63,22 @@ export class RegisterTelegramIdentityCommandHandler {
 			},
 		});
 
-		const referralApplied = await this.tryAssignReferrer(identity, command.referrerTelegramIdentityId, now);
-		const finalIdentity = await this.applyReferralCreditIfNeeded(referralApplied.identity, now);
-		await this.identityRepository.save(finalIdentity);
+		await this.identityRepository.save(identity);
 
 		const event: IdentityRegisteredDomainEvent = {
 			type: "identity.registered",
-			identityId: finalIdentity.id,
-			telegramIdentityId: finalIdentity.telegramIdentityId,
+			identityId: identity.id,
+			telegramIdentityId: identity.telegramIdentityId,
 			occurredAt: now,
 		};
 		this.logger.info("Identity registered", {
-			identityId: finalIdentity.id,
-			telegramIdentityId: finalIdentity.telegramIdentityId,
+			identityId: identity.id,
+			telegramIdentityId: identity.telegramIdentityId,
 		});
 
 		return {
-			identity: finalIdentity,
+			identity,
 			event,
-			referralRejectedReason: referralApplied.rejectedReason,
 		};
-	}
-
-	private async tryAssignReferrer(
-		identity: IdentityEntity,
-		referrerTelegramIdentityId: number | undefined,
-		now: ReturnType<ClockPort["nowIso"]>,
-	): Promise<{ identity: IdentityEntity; rejectedReason?: "self_referral" | "referrer_not_found" }> {
-		if (!referrerTelegramIdentityId) {
-			return { identity };
-		}
-
-		const referrerTgId = toTelegramIdentityId(referrerTelegramIdentityId);
-		if (referrerTgId === identity.telegramIdentityId) {
-			return { identity, rejectedReason: "self_referral" };
-		}
-
-		const referrer = await this.identityRepository.findByTelegramId(referrerTgId);
-		if (!referrer) {
-			return { identity, rejectedReason: "referrer_not_found" };
-		}
-
-		return { identity: identity.assignReferrer(referrer.id, now) };
-	}
-
-	private async applyReferralCreditIfNeeded(
-		identity: IdentityEntity,
-		now: ReturnType<ClockPort["nowIso"]>,
-	): Promise<IdentityEntity> {
-		if (!identity.referredBy || identity.referralBonusClaimed) {
-			return identity;
-		}
-
-		const referrer = await this.identityRepository.getById(identity.referredBy);
-		if (!referrer) {
-			return identity;
-		}
-
-		const claimed = identity.claimReferralBonus(now);
-		const creditedReferrer = referrer.creditReferral(claimed.id, 1, now);
-		await this.identityRepository.save(creditedReferrer);
-		return claimed;
 	}
 }
