@@ -1,6 +1,0 @@
-export const REDIS_CLIENT = Symbol("REDIS_CLIENT");
-export const USER_REPOSITORY = Symbol("USER_REPOSITORY");
-export const IDEMPOTENCY_REPOSITORY = Symbol("IDEMPOTENCY_REPOSITORY");
-export const SESSION_STORE = Symbol("SESSION_STORE");
-export const RATE_LIMITER = Symbol("RATE_LIMITER");
-export const TELEGRAM_COMMAND_HANDLERS = Symbol("TELEGRAM_COMMAND_HANDLERS");
