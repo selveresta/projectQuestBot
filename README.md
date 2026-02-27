@@ -1,185 +1,178 @@
-# Telegram Bot Backend (NestJS + grammY)
+# Telegram Backend (NestJS, CQRS, DDD-lite)
 
-Production-oriented Telegram bot backend built as a modular monolith with clean boundaries:
+Production-ready modular monolith for Telegram transport + business modules with strict domain boundaries.
 
-- Transport layer: Telegram (grammY adapter inside Nest)
-- Application layer: use-cases
-- Domain layer: entities/policies/interfaces
-- Infrastructure layer: Redis adapters, idempotency, sessions
+## Principles
 
-## Runtime Modes
+- TypeScript strict
+- No `any`
+- No default exports
+- No circular imports
+- Business logic isolated from transport and storage
+- Repository contracts are stable and switchable via DI (`PRIMARY_DB=redis|postgres`)
 
-- `NODE_ENV=development` -> polling mode
-- `NODE_ENV=production` -> webhook mode
+## Layer Model
 
-Webhook endpoint:
+- `src/modules/system/*` — reusable system modules
+- `src/modules/features/*` — client-specific feature modules
+- `src/shared/*` — cross-cutting ports, adapters, config, health, global persistence wiring
 
-- `POST /telegram/webhook`
-- Header required: `x-telegram-bot-api-secret-token`
+## CQRS Rules
 
-Health endpoint:
+- `application/commands/*` — mutations only
+- `application/queries/*` — reads only
+- One command/query class + one handler class per file
+- Telegram command handlers call only command/query handlers
 
-- `GET /health`
-
-## Stack
-
-- NestJS
-- grammY
-- TypeScript strict mode
-- Zod validation
-- Pino logger (Nest logger adapter)
-- Redis
-- pnpm-ready scripts
-
-## Project Structure
+## Project Tree
 
 ```text
 src/
   main.ts
   app.module.ts
-  common/
-    filters/
-      global-exception.filter.ts
-    interceptors/
-      http-logging.interceptor.ts
-    jobs/
-      job-dispatcher.port.ts
-      noop-job-dispatcher.service.ts
-    logger/
-      pino-logger.service.ts
-  config/
-    app-config.service.ts
-    core-config.module.ts
-    env.schema.ts
+
   modules/
-    health/
-      health.controller.ts
-      health.module.ts
-    referrals/
-      application/
-        apply-referral-bonus.use-case.ts
-      domain/
-        referral-policy.ts
-      referrals.module.ts
-    telegram/
-      telegram.constants.ts
-      telegram.types.ts
-      telegram.module.ts
-      telegram.service.ts
-      webhook.controller.ts
-      domain/
-        user.entity.ts
-      application/
-        dto/
-          start-command.dto.ts
-          webhook-update.dto.ts
-        ports/
-          user-repository.port.ts
-          idempotency-repository.port.ts
-          session-store.port.ts
-          rate-limiter.port.ts
-        use-cases/
-          handle-start-command.use-case.ts
-          handle-status-command.use-case.ts
-        telegram-application.module.ts
-      infrastructure/
-        telegram-infrastructure.module.ts
+    system/
+      identity/
+        identity.module.ts
+        domain/
+        application/
+          commands/
+          queries/
+          ports/
+        persistence/
+          redis/
+          postgres/
+          mappers/
+
+      quests/
+        quests.module.ts
+        domain/
+        application/
+          commands/
+          ports/
+        persistence/
+          redis/
+          postgres/
+          mappers/
+
+      telegram/
+        telegram.module.ts
+        telegram.service.ts
+        webhook.controller.ts
+        commands/
+        registry/
+
+    features/
+      rewards/
+        rewards.module.ts
+        domain/
+        application/
+          commands/
+          ports/
+        persistence/
+          redis/
+          postgres/
+          mappers/
+
+  shared/
+    shared.module.ts
+
+    domain/
+      brand.ts
+      iso-date.ts
+
+    application/
+      ports/
+        cache.port.ts
+        rate-limiter.port.ts
+        clock.port.ts
+        id-generator.port.ts
+        logger.port.ts
+        transaction-manager.port.ts
+        job-dispatcher.port.ts
+        telegram-idempotency-store.port.ts
+        telegram-session-store.port.ts
+
+    adapters/
+      cache/
+      rate-limit/
+      transaction/
+      logger/
+      clock/
+      id-generator/
+      telegram/
+      http/
+      jobs/
+
+    persistence/
+      redis/
+        redis.module.ts
         redis.provider.ts
-        redis-client-lifecycle.service.ts
-        redis-user.repository.ts
-        redis-idempotency.repository.ts
-        redis-session.store.ts
-        noop-rate-limiter.service.ts
-      commands/
-        start/
-          start.command-handler.ts
-          start.command.module.ts
-        status/
-          status.command-handler.ts
-          status.command.module.ts
-      registry/
-        command-registry.service.ts
+        redis-key.schema.ts
+      postgres/
+        postgres.module.ts
+        postgres.provider.ts
+
+    config/
+      app-config.module.ts
+      app-config.service.ts
+      env.schema.ts
+
+    health/
+      health.module.ts
+      health.controller.ts
 ```
 
-## Environment Variables
+## PRIMARY_DB Switch
 
-Required:
+- `PRIMARY_DB=redis` → repositories resolve to Redis implementations
+- `PRIMARY_DB=postgres` → repositories resolve to Postgres implementations
+- Switch is configured in module DI factories; command/query handlers are unchanged.
 
-- `BOT_TOKEN`
+## Redis Always On
 
-Optional:
+Redis is always used for:
 
-- `NODE_ENV` (`development` | `production`, default `development`)
-- `PORT` (default `3000`)
-- `REDIS_URL` (default `redis://127.0.0.1:6379`)
-- `TELEGRAM_WEBHOOK_URL` (required in `production`)
-- `TELEGRAM_WEBHOOK_SECRET` (required in `production`)
-- `TELEGRAM_DROP_PENDING_UPDATES` (default `true`)
-- `TELEGRAM_SESSION_ENABLED` (default `false`)
-- `IDEMPOTENCY_TTL_SECONDS` (default `86400`)
-- `REFERRAL_POINTS` (default `1`)
-- `LOG_LEVEL` (`fatal|error|warn|info|debug|trace|silent`)
+- cache
+- rate-limit
+- telegram idempotency
+- telegram session storage (optional)
 
-## Local Development
+Redis keys are centralized in:
 
-```bash
-pnpm install
-pnpm dev
-```
+- `src/shared/persistence/redis/redis-key.schema.ts`
+
+## Dev / Prod Telegram Mode
+
+- `NODE_ENV=development` → polling
+- `NODE_ENV=production` → webhook
+
+Webhook endpoint:
+
+- `POST /telegram/webhook`
+- secret validation via `x-telegram-bot-api-secret-token`
 
 ## Build / Run
 
 ```bash
+pnpm install
 pnpm build
-pnpm start
+pnpm dev
 ```
 
-## Architecture Notes
+## How To Add a New Feature Module
 
-### Telegram transport isolation
+1. Create `src/modules/features/<feature-name>/<feature>.module.ts`.
+2. Add domain model in `domain/`.
+3. Add repository port contracts in `application/ports/`.
+4. Add `application/commands/` and/or `application/queries/` handlers.
+5. Add `persistence/redis` and `persistence/postgres` repository adapters + mappers.
+6. Bind repository token in module provider factory using `AppConfigService.primaryDb`.
+7. Expose only needed handlers/tokens from module exports.
 
-- Telegram command handlers are Nest providers (`StartCommandHandler`, `StatusCommandHandler`)
-- They only map Telegram context to use-case input/output
-- Business rules live in use-cases (`handle-start`, `handle-status`, referral use-case)
+## Test Skeleton
 
-### Idempotency and stateless webhook
-
-- Every update is checked in Redis (`RedisIdempotencyRepository`)
-- Duplicate `update_id` is ignored
-- Webhook handler is stateless and horizontally scalable
-
-### Session support
-
-- Optional Redis-backed grammY session adapter (`RedisSessionStore`)
-- Toggle with `TELEGRAM_SESSION_ENABLED=true`
-
-### Rate limiting integration point
-
-- `RateLimiterPort` + `NoopRateLimiterService`
-- Replace with Redis-based limiter without touching use-cases
-
-### Background jobs integration point
-
-- `JobDispatcherPort` + `NoopJobDispatcherService`
-- Referral use-case dispatches a domain event (`referral.awarded`)
-- Replace noop dispatcher with queue implementation (BullMQ/SQS/Kafka)
-
-## How To Add New Feature
-
-1. Create domain model/policy in `modules/<feature>/domain`.
-2. Add use-case(s) in `modules/<feature>/application/use-cases`.
-3. Define infrastructure ports in `application/ports`.
-4. Implement adapters in `infrastructure` and bind with DI tokens.
-5. Add transport adapters (Telegram command handlers/controllers) that call use-cases.
-6. Register feature module in `app.module.ts` or parent module.
-7. Add Zod DTO validation for inbound payloads.
-8. Add logs through `PinoLoggerService` and keep errors handled by global filter.
-
-## How To Add New Telegram Command
-
-1. Create command handler provider in `modules/telegram/commands/<name>/<name>.command-handler.ts`.
-2. Inject required use-case(s), parse input with Zod DTO.
-3. Create `<name>.command.module.ts` and export handler.
-4. Import module in `telegram.module.ts`.
-5. Add handler to `TELEGRAM_COMMAND_HANDLERS` factory array.
-6. Restart app; command is auto-registered by `CommandRegistryService`.
+- `tests/unit/get-user-profile.query.spec.ts`
+- `tests/integration/redis-user-repository.spec.ts`
+- `tests/integration/postgres-user-repository.spec.ts`

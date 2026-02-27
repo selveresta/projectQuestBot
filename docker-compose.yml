@@ -8,6 +8,18 @@ services:
       - "6380:6379"
     command: ["redis-server", "--appendonly", "yes"]
 
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   app:
     build:
       context: .
@@ -15,12 +27,18 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
+      - postgres
     environment:
       NODE_ENV: production
       PORT: 3000
       BOT_TOKEN: ${BOT_TOKEN}
+      PRIMARY_DB: ${PRIMARY_DB:-redis}
       REDIS_URL: redis://redis:6379
+      POSTGRES_URL: postgres://app:app@postgres:5432/app
       TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
     ports:
       - "3000:3000"
+
+volumes:
+  postgres_data:
