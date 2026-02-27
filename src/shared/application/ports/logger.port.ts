@@ -1,4 +1,4 @@
-export const LOGGER_PORT = Symbol("LOGGER_PORT");
+export { LOGGER_PORT } from "../../di/tokens";
 
 export interface LoggerPort {
 	debug(message: string, context?: Record<string, unknown>): void;

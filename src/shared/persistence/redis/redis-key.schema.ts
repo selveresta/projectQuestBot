@@ -1,13 +1,13 @@
-import type { TelegramUserId } from "../../../modules/system/identity/domain/value-objects/telegram-user-id";
-import type { UserId } from "../../../modules/system/identity/domain/value-objects/user-id";
+import type { TelegramIdentityId } from "../../../modules/system/identity/domain/value-objects/telegram-identity-id";
+import type { IdentityId } from "../../../modules/system/identity/domain/value-objects/identity-id";
 
 export const RedisKeys = {
-	user: {
-		entity: (userId: UserId): string => `user:${userId}`,
-		telegramIndex: (telegramId: TelegramUserId): string => `user:tg:${telegramId}`,
+	identity: {
+		entity: (identityId: IdentityId): string => `identity:${identityId}`,
+		telegramIndex: (telegramId: TelegramIdentityId): string => `identity:tg:${telegramId}`,
 	},
 	cache: {
-		userProfile: (userId: UserId): string => `cache:user:${userId}:profile`,
+		identityProfile: (identityId: IdentityId): string => `cache:identity:${identityId}:profile`,
 	},
 	rateLimit: {
 		scope: (scope: string, id: string): string => `rl:${scope}:${id}`,

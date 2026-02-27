@@ -1,6 +1,6 @@
 import type { IsoDateString } from "../../domain/iso-date";
 
-export const CLOCK_PORT = Symbol("CLOCK_PORT");
+export { CLOCK_PORT } from "../../di/tokens";
 
 export interface ClockPort {
 	now(): Date;

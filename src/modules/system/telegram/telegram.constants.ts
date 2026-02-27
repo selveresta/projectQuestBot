@@ -1,1 +1,1 @@
-export const TELEGRAM_COMMAND_HANDLERS = Symbol("TELEGRAM_COMMAND_HANDLERS");
+export { TELEGRAM_COMMAND_HANDLERS } from "../../../shared/di/tokens";

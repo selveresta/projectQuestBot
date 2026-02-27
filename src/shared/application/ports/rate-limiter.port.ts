@@ -1,4 +1,4 @@
-export const RATE_LIMITER_PORT = Symbol("RATE_LIMITER_PORT");
+export { RATE_LIMITER_PORT } from "../../di/tokens";
 
 export interface RateLimiterConsumeInput {
 	key: string;

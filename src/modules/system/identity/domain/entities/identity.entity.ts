@@ -1,37 +1,37 @@
 import type { IsoDateString } from "../../../../../shared/domain/iso-date";
 import { toIsoDateString } from "../../../../../shared/domain/iso-date";
-import type { TelegramUserId } from "../value-objects/telegram-user-id";
-import type { UserId } from "../value-objects/user-id";
+import type { TelegramIdentityId } from "../value-objects/telegram-identity-id";
+import type { IdentityId } from "../value-objects/identity-id";
 
-export interface UserIdentitySnapshot {
+export interface IdentitySnapshot {
 	username?: string;
 	firstName?: string;
 	lastName?: string;
 }
 
-export interface UserEntitySnapshot extends UserIdentitySnapshot {
-	id: UserId;
-	telegramUserId: TelegramUserId;
+export interface IdentityEntitySnapshot extends IdentitySnapshot {
+	id: IdentityId;
+	telegramIdentityId: TelegramIdentityId;
 	points: number;
-	referredBy?: UserId;
+	referredBy?: IdentityId;
 	referralBonusClaimed: boolean;
-	creditedReferralIds: UserId[];
+	creditedReferralIds: IdentityId[];
 	createdAt: IsoDateString;
 	updatedAt: IsoDateString;
 }
 
-export class UserEntity {
-	private constructor(private readonly snapshot: UserEntitySnapshot) {}
+export class IdentityEntity {
+	private constructor(private readonly snapshot: IdentityEntitySnapshot) {}
 
 	static createNew(params: {
-		id: UserId;
-		telegramUserId: TelegramUserId;
+		id: IdentityId;
+		telegramIdentityId: TelegramIdentityId;
 		now: IsoDateString;
-		identity: UserIdentitySnapshot;
-	}): UserEntity {
-		return UserEntity.rehydrate({
+		identity: IdentitySnapshot;
+	}): IdentityEntity {
+		return IdentityEntity.rehydrate({
 			id: params.id,
-			telegramUserId: params.telegramUserId,
+			telegramIdentityId: params.telegramIdentityId,
 			username: params.identity.username,
 			firstName: params.identity.firstName,
 			lastName: params.identity.lastName,
@@ -43,9 +43,9 @@ export class UserEntity {
 		});
 	}
 
-	static rehydrate(snapshot: UserEntitySnapshot): UserEntity {
+	static rehydrate(snapshot: IdentityEntitySnapshot): IdentityEntity {
 		if (snapshot.points < 0 || !Number.isFinite(snapshot.points)) {
-			throw new Error("User points must be a non-negative number");
+			throw new Error("Identity points must be a non-negative number");
 		}
 
 		const uniqueCredits = Array.from(new Set(snapshot.creditedReferralIds));
@@ -56,26 +56,26 @@ export class UserEntity {
 			};
 		}
 
-		return new UserEntity({
+		return new IdentityEntity({
 			...snapshot,
 			createdAt: toIsoDateString(snapshot.createdAt),
 			updatedAt: toIsoDateString(snapshot.updatedAt),
 		});
 	}
 
-	get id(): UserId {
+	get id(): IdentityId {
 		return this.snapshot.id;
 	}
 
-	get telegramUserId(): TelegramUserId {
-		return this.snapshot.telegramUserId;
+	get telegramIdentityId(): TelegramIdentityId {
+		return this.snapshot.telegramIdentityId;
 	}
 
 	get points(): number {
 		return this.snapshot.points;
 	}
 
-	get referredBy(): UserId | undefined {
+	get referredBy(): IdentityId | undefined {
 		return this.snapshot.referredBy;
 	}
 
@@ -83,19 +83,19 @@ export class UserEntity {
 		return this.snapshot.referralBonusClaimed;
 	}
 
-	get creditedReferralIds(): readonly UserId[] {
+	get creditedReferralIds(): readonly IdentityId[] {
 		return this.snapshot.creditedReferralIds;
 	}
 
-	toSnapshot(): UserEntitySnapshot {
+	toSnapshot(): IdentityEntitySnapshot {
 		return {
 			...this.snapshot,
 			creditedReferralIds: [...this.snapshot.creditedReferralIds],
 		};
 	}
 
-	withIdentity(identity: UserIdentitySnapshot, now: IsoDateString): UserEntity {
-		return UserEntity.rehydrate({
+	withIdentity(identity: IdentitySnapshot, now: IsoDateString): IdentityEntity {
+		return IdentityEntity.rehydrate({
 			...this.snapshot,
 			username: identity.username ?? this.snapshot.username,
 			firstName: identity.firstName ?? this.snapshot.firstName,
@@ -104,58 +104,58 @@ export class UserEntity {
 		});
 	}
 
-	assignReferrer(referrerId: UserId, now: IsoDateString): UserEntity {
+	assignReferrer(referrerId: IdentityId, now: IsoDateString): IdentityEntity {
 		if (referrerId === this.id) {
-			throw new Error("User cannot refer itself");
+			throw new Error("Identity cannot refer itself");
 		}
 		if (this.snapshot.referredBy) {
 			return this;
 		}
 
-		return UserEntity.rehydrate({
+		return IdentityEntity.rehydrate({
 			...this.snapshot,
 			referredBy: referrerId,
 			updatedAt: now,
 		});
 	}
 
-	claimReferralBonus(now: IsoDateString): UserEntity {
+	claimReferralBonus(now: IsoDateString): IdentityEntity {
 		if (this.snapshot.referralBonusClaimed) {
 			return this;
 		}
 
-		return UserEntity.rehydrate({
+		return IdentityEntity.rehydrate({
 			...this.snapshot,
 			referralBonusClaimed: true,
 			updatedAt: now,
 		});
 	}
 
-	creditReferral(referredUserId: UserId, pointsDelta: number, now: IsoDateString): UserEntity {
+	creditReferral(referredIdentityId: IdentityId, pointsDelta: number, now: IsoDateString): IdentityEntity {
 		if (pointsDelta <= 0 || !Number.isFinite(pointsDelta)) {
 			throw new Error("pointsDelta must be a positive number");
 		}
-		if (referredUserId === this.id) {
-			throw new Error("Cannot credit referral for same user");
+		if (referredIdentityId === this.id) {
+			throw new Error("Cannot credit referral for same identity");
 		}
-		if (this.snapshot.creditedReferralIds.includes(referredUserId)) {
+		if (this.snapshot.creditedReferralIds.includes(referredIdentityId)) {
 			return this;
 		}
 
-		return UserEntity.rehydrate({
+		return IdentityEntity.rehydrate({
 			...this.snapshot,
 			points: this.snapshot.points + pointsDelta,
-			creditedReferralIds: [...this.snapshot.creditedReferralIds, referredUserId],
+			creditedReferralIds: [...this.snapshot.creditedReferralIds, referredIdentityId],
 			updatedAt: now,
 		});
 	}
 
-	applyPointsDelta(delta: number, now: IsoDateString): UserEntity {
+	applyPointsDelta(delta: number, now: IsoDateString): IdentityEntity {
 		const nextPoints = this.snapshot.points + delta;
 		if (nextPoints < 0) {
-			throw new Error("User points cannot be negative");
+			throw new Error("Identity points cannot be negative");
 		}
-		return UserEntity.rehydrate({
+		return IdentityEntity.rehydrate({
 			...this.snapshot,
 			points: nextPoints,
 			updatedAt: now,

@@ -1,1 +1,1 @@
-export const POSTGRES_POOL = Symbol("POSTGRES_POOL");
+export { POSTGRES_POOL } from "../../di/tokens";

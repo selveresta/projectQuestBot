@@ -1,1 +1,1 @@
-export const REDIS_CLIENT = Symbol("REDIS_CLIENT");
+export { REDIS_CLIENT } from "../../di/tokens";

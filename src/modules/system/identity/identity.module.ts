@@ -1,26 +1,26 @@
 import { Module } from "@nestjs/common";
 
-import { GetUserProfileQueryHandler } from "./application/queries/get-user-profile.query";
-import { RegisterTelegramUserCommandHandler } from "./application/commands/register-telegram-user.command";
-import { USER_REPOSITORY } from "./application/ports/user-repository.port";
-import { PostgresUserRepository } from "./persistence/postgres/postgres-user.repository";
-import { RedisUserRepository } from "./persistence/redis/redis-user.repository";
+import { GetIdentityProfileQueryHandler } from "./application/queries/get-identity-profile.query";
+import { RegisterTelegramIdentityCommandHandler } from "./application/commands/register-telegram-identity.command";
+import { IDENTITY_REPOSITORY } from "./application/ports/identity-repository.port";
+import { PostgresIdentityRepository } from "./persistence/postgres/postgres-identity.repository";
+import { RedisIdentityRepository } from "./persistence/redis/redis-identity.repository";
 import { AppConfigService } from "../../../shared/config/app-config.service";
 
 @Module({
 	imports: [],
 	providers: [
-		RedisUserRepository,
-		PostgresUserRepository,
+		RedisIdentityRepository,
+		PostgresIdentityRepository,
 		{
-			provide: USER_REPOSITORY,
-			inject: [AppConfigService, RedisUserRepository, PostgresUserRepository],
-			useFactory: (config: AppConfigService, redisRepository: RedisUserRepository, postgresRepository: PostgresUserRepository) =>
+			provide: IDENTITY_REPOSITORY,
+			inject: [AppConfigService, RedisIdentityRepository, PostgresIdentityRepository],
+			useFactory: (config: AppConfigService, redisRepository: RedisIdentityRepository, postgresRepository: PostgresIdentityRepository) =>
 				config.primaryDb === "postgres" ? postgresRepository : redisRepository,
 		},
-		RegisterTelegramUserCommandHandler,
-		GetUserProfileQueryHandler,
+		RegisterTelegramIdentityCommandHandler,
+		GetIdentityProfileQueryHandler,
 	],
-	exports: [USER_REPOSITORY, RegisterTelegramUserCommandHandler, GetUserProfileQueryHandler],
+	exports: [IDENTITY_REPOSITORY, RegisterTelegramIdentityCommandHandler, GetIdentityProfileQueryHandler],
 })
 export class IdentityModule {}

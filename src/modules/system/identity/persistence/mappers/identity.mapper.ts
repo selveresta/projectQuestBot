@@ -1,11 +1,11 @@
-import { UserEntity } from "../../domain/entities/user.entity";
-import { toTelegramUserId } from "../../domain/value-objects/telegram-user-id";
-import { toUserId } from "../../domain/value-objects/user-id";
+import { IdentityEntity } from "../../domain/entities/identity.entity";
+import { toTelegramIdentityId } from "../../domain/value-objects/telegram-identity-id";
+import { toIdentityId } from "../../domain/value-objects/identity-id";
 import { toIsoDateString } from "../../../../../shared/domain/iso-date";
 
-export type RedisUserHash = Record<string, string> & {
+export type RedisIdentityHash = Record<string, string> & {
 	id: string;
-	telegram_user_id: string;
+	telegram_identity_id: string;
 	username: string;
 	first_name: string;
 	last_name: string;
@@ -17,7 +17,7 @@ export type RedisUserHash = Record<string, string> & {
 	updated_at: string;
 };
 
-export interface PostgresUserRow {
+export interface PostgresIdentityRow {
 	id: string;
 	telegram_id: string;
 	username: string | null;
@@ -30,11 +30,11 @@ export interface PostgresUserRow {
 	updated_at: string;
 }
 
-export function userToRedisHash(user: UserEntity): RedisUserHash {
-	const snapshot = user.toSnapshot();
+export function identityToRedisHash(identity: IdentityEntity): RedisIdentityHash {
+	const snapshot = identity.toSnapshot();
 	return {
 		id: snapshot.id,
-		telegram_user_id: String(snapshot.telegramUserId),
+		telegram_identity_id: String(snapshot.telegramIdentityId),
 		username: snapshot.username ?? "",
 		first_name: snapshot.firstName ?? "",
 		last_name: snapshot.lastName ?? "",
@@ -47,20 +47,22 @@ export function userToRedisHash(user: UserEntity): RedisUserHash {
 	};
 }
 
-export function redisHashToUser(hash: Record<string, string>): UserEntity | null {
-	if (!hash.id || !hash.telegram_user_id) {
+export function redisHashToIdentity(hash: Record<string, string>): IdentityEntity | null {
+	// Backward compatibility for hashes written before identity naming unification.
+	const telegramIdentityRaw = hash.telegram_identity_id ?? hash.telegram_user_id;
+	if (!hash.id || !telegramIdentityRaw) {
 		return null;
 	}
 
 	const credits = parseCredits(hash.credited_referrals);
-	return UserEntity.rehydrate({
-		id: toUserId(hash.id),
-		telegramUserId: toTelegramUserId(Number.parseInt(hash.telegram_user_id, 10)),
+	return IdentityEntity.rehydrate({
+		id: toIdentityId(hash.id),
+		telegramIdentityId: toTelegramIdentityId(Number.parseInt(telegramIdentityRaw, 10)),
 		username: hash.username || undefined,
 		firstName: hash.first_name || undefined,
 		lastName: hash.last_name || undefined,
 		points: Number.parseInt(hash.points || "0", 10),
-		referredBy: hash.referred_by ? toUserId(hash.referred_by) : undefined,
+		referredBy: hash.referred_by ? toIdentityId(hash.referred_by) : undefined,
 		referralBonusClaimed: hash.referral_bonus_claimed === "1",
 		creditedReferralIds: credits,
 		createdAt: toIsoDateString(hash.created_at),
@@ -68,11 +70,11 @@ export function redisHashToUser(hash: Record<string, string>): UserEntity | null
 	});
 }
 
-export function userToPostgresRow(user: UserEntity): PostgresUserRow {
-	const snapshot = user.toSnapshot();
+export function identityToPostgresRow(identity: IdentityEntity): PostgresIdentityRow {
+	const snapshot = identity.toSnapshot();
 	return {
 		id: snapshot.id,
-		telegram_id: String(snapshot.telegramUserId),
+		telegram_id: String(snapshot.telegramIdentityId),
 		username: snapshot.username ?? null,
 		first_name: snapshot.firstName ?? null,
 		last_name: snapshot.lastName ?? null,
@@ -84,23 +86,23 @@ export function userToPostgresRow(user: UserEntity): PostgresUserRow {
 	};
 }
 
-export function postgresRowToUser(row: PostgresUserRow, creditedReferrals: readonly string[]): UserEntity {
-	return UserEntity.rehydrate({
-		id: toUserId(row.id),
-		telegramUserId: toTelegramUserId(Number.parseInt(row.telegram_id, 10)),
+export function postgresRowToIdentity(row: PostgresIdentityRow, creditedReferrals: readonly string[]): IdentityEntity {
+	return IdentityEntity.rehydrate({
+		id: toIdentityId(row.id),
+		telegramIdentityId: toTelegramIdentityId(Number.parseInt(row.telegram_id, 10)),
 		username: row.username ?? undefined,
 		firstName: row.first_name ?? undefined,
 		lastName: row.last_name ?? undefined,
 		points: row.points,
-		referredBy: row.referred_by ? toUserId(row.referred_by) : undefined,
+		referredBy: row.referred_by ? toIdentityId(row.referred_by) : undefined,
 		referralBonusClaimed: row.referral_bonus_claimed,
-		creditedReferralIds: creditedReferrals.map((value) => toUserId(value)),
+		creditedReferralIds: creditedReferrals.map((value) => toIdentityId(value)),
 		createdAt: toIsoDateString(row.created_at),
 		updatedAt: toIsoDateString(row.updated_at),
 	});
 }
 
-function parseCredits(raw: string | undefined): ReturnType<typeof toUserId>[] {
+function parseCredits(raw: string | undefined): ReturnType<typeof toIdentityId>[] {
 	if (!raw) {
 		return [];
 	}
@@ -111,7 +113,7 @@ function parseCredits(raw: string | undefined): ReturnType<typeof toUserId>[] {
 		}
 		return parsed
 			.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-			.map((item) => toUserId(item));
+			.map((item) => toIdentityId(item));
 	} catch {
 		return [];
 	}

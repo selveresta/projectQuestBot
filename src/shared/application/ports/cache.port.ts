@@ -1,4 +1,4 @@
-export const CACHE_PORT = Symbol("CACHE_PORT");
+export { CACHE_PORT } from "../../di/tokens";
 
 export interface CachePort {
 	get<T>(key: string): Promise<T | null>;

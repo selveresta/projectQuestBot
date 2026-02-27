@@ -1,7 +1,7 @@
 import test from "node:test";
 
-test("Redis user repository integration skeleton", { skip: true }, async () => {
+test("Redis identity repository integration skeleton", { skip: true }, async () => {
 	// Arrange: boot Redis test container / local redis instance
-	// Act: persist and query a user through RedisUserRepository
+	// Act: persist and query an identity through RedisIdentityRepository
 	// Assert: all repository contract methods return expected entities
 });

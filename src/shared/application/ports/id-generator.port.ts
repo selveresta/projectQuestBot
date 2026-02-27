@@ -1,4 +1,4 @@
-export const ID_GENERATOR_PORT = Symbol("ID_GENERATOR_PORT");
+export { ID_GENERATOR_PORT } from "../../di/tokens";
 
 export interface IdGeneratorPort {
 	next(): string;

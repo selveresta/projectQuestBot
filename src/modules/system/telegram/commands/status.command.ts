@@ -1,25 +1,25 @@
 import { Injectable } from "@nestjs/common";
 
 import {
-	GetUserProfileQuery,
-	GetUserProfileQueryHandler,
-} from "../../identity/application/queries/get-user-profile.query";
+	GetIdentityProfileQuery,
+	GetIdentityProfileQueryHandler,
+} from "../../identity/application/queries/get-identity-profile.query";
 import type { TelegramBotContext, TelegramCommandHandler } from "../telegram.types";
 
 @Injectable()
 export class StatusCommandHandler implements TelegramCommandHandler {
 	readonly command = "status";
 
-	constructor(private readonly getUserProfileQueryHandler: GetUserProfileQueryHandler) {}
+	constructor(private readonly getIdentityProfileQueryHandler: GetIdentityProfileQueryHandler) {}
 
 	async execute(ctx: TelegramBotContext): Promise<void> {
 		if (!ctx.from) {
-			await ctx.reply("I can only process this command for Telegram users.");
+			await ctx.reply("I can only process this command for Telegram identities.");
 			return;
 		}
 
 		try {
-			const profile = await this.getUserProfileQueryHandler.execute(new GetUserProfileQuery(ctx.from.id));
+			const profile = await this.getIdentityProfileQueryHandler.execute(new GetIdentityProfileQuery(ctx.from.id));
 			if (!profile) {
 				await ctx.reply("Profile not found. Use /start first.");
 				return;
@@ -27,8 +27,8 @@ export class StatusCommandHandler implements TelegramCommandHandler {
 
 			await ctx.reply(
 				[
-					`User: ${profile.userId}`,
-					`Telegram ID: ${profile.telegramUserId}`,
+					`Identity: ${profile.identityId}`,
+					`Telegram ID: ${profile.telegramIdentityId}`,
 					`Points: ${profile.points}`,
 					`Referred by: ${profile.referredBy ?? "none"}`,
 				].join("\n"),
