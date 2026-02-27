@@ -3,10 +3,10 @@ import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
-import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
-import { HttpLoggingInterceptor } from "./common/interceptors/http-logging.interceptor";
-import { PinoLoggerService } from "./common/logger/pino-logger.service";
-import { AppConfigService } from "./modules/config/app-config.service";
+import { GlobalExceptionFilter } from "./shared/adapters/http/global-exception.filter";
+import { HttpLoggingInterceptor } from "./shared/adapters/http/http-logging.interceptor";
+import { PinoLoggerService } from "./shared/adapters/logger/pino-logger.service";
+import { AppConfigService } from "./shared/config/app-config.service";
 
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule, { bufferLogs: true });

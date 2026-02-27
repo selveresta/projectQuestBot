@@ -7,4 +7,4 @@ import { AppConfigService } from "./app-config.service";
 	providers: [AppConfigService],
 	exports: [AppConfigService],
 })
-export class CoreConfigModule {}
+export class AppConfigModule {}

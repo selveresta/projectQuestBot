@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
-import type { JobDispatcherPort } from "./job-dispatcher.port";
+import type { JobDispatcherPort } from "../../application/ports/job-dispatcher.port";
 
 @Injectable()
 export class NoopJobDispatcherService implements JobDispatcherPort {

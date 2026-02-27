@@ -27,6 +27,9 @@ export class AppConfigService {
 				throw new Error("TELEGRAM_WEBHOOK_SECRET is required in production mode");
 			}
 		}
+		if (this.env.PRIMARY_DB === "postgres" && !this.env.POSTGRES_URL) {
+			throw new Error("POSTGRES_URL is required when PRIMARY_DB=postgres");
+		}
 	}
 
 	get nodeEnv(): "development" | "production" {
@@ -43,6 +46,14 @@ export class AppConfigService {
 
 	get redisUrl(): string {
 		return this.env.REDIS_URL;
+	}
+
+	get postgresUrl(): string | undefined {
+		return this.env.POSTGRES_URL;
+	}
+
+	get primaryDb(): "redis" | "postgres" {
+		return this.env.PRIMARY_DB;
 	}
 
 	get telegramWebhookPath(): string {

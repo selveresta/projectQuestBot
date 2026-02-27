@@ -7,11 +7,18 @@ export class HealthController {
 	constructor(private readonly config: AppConfigService) {}
 
 	@Get()
-	getHealth(): { status: "ok"; mode: "polling" | "webhook"; nodeEnv: "development" | "production"; timestamp: string } {
+	getHealth(): {
+		status: "ok";
+		mode: "polling" | "webhook";
+		nodeEnv: "development" | "production";
+		primaryDb: "redis" | "postgres";
+		timestamp: string;
+	} {
 		return {
 			status: "ok",
 			mode: this.config.telegramMode,
 			nodeEnv: this.config.nodeEnv,
+			primaryDb: this.config.primaryDb,
 			timestamp: new Date().toISOString(),
 		};
 	}

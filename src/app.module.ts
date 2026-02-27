@@ -1,16 +1,18 @@
 import { Module } from "@nestjs/common";
 
-import { JOB_DISPATCHER } from "./common/jobs/job-dispatcher.port";
-import { NoopJobDispatcherService } from "./common/jobs/noop-job-dispatcher.service";
-import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
-import { HttpLoggingInterceptor } from "./common/interceptors/http-logging.interceptor";
-import { PinoLoggerService } from "./common/logger/pino-logger.service";
-import { CoreConfigModule } from "./modules/config/core-config.module";
-import { HealthModule } from "./modules/health/health.module";
-import { TelegramModule } from "./modules/telegram/telegram.module";
+import { IdentityModule } from "./modules/system/identity/identity.module";
+import { TelegramModule } from "./modules/system/telegram/telegram.module";
+import { NoopJobDispatcherService } from "./shared/adapters/jobs/noop-job-dispatcher.service";
+import { GlobalExceptionFilter } from "./shared/adapters/http/global-exception.filter";
+import { HttpLoggingInterceptor } from "./shared/adapters/http/http-logging.interceptor";
+import { PinoLoggerService } from "./shared/adapters/logger/pino-logger.service";
+import { JOB_DISPATCHER } from "./shared/application/ports/job-dispatcher.port";
+import { AppConfigModule } from "./shared/config/app-config.module";
+import { HealthModule } from "./shared/health/health.module";
+import { SharedModule } from "./shared/shared.module";
 
 @Module({
-	imports: [CoreConfigModule, HealthModule, TelegramModule],
+	imports: [AppConfigModule, SharedModule, HealthModule, IdentityModule, TelegramModule],
 	providers: [
 		PinoLoggerService,
 		GlobalExceptionFilter,
