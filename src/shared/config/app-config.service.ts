@@ -19,6 +19,7 @@ export class AppConfigService {
 		}
 
 		this.env = parsed.data;
+		const postgresUrl = this.env.DATABASE_URL ?? this.env.POSTGRES_URL;
 		if (this.isProduction()) {
 			if (!this.env.TELEGRAM_WEBHOOK_URL) {
 				throw new Error("TELEGRAM_WEBHOOK_URL is required in production mode");
@@ -27,8 +28,8 @@ export class AppConfigService {
 				throw new Error("TELEGRAM_WEBHOOK_SECRET is required in production mode");
 			}
 		}
-		if (this.env.PRIMARY_DB === "postgres" && !this.env.POSTGRES_URL) {
-			throw new Error("POSTGRES_URL is required when PRIMARY_DB=postgres");
+		if (this.env.PRIMARY_DB === "postgres" && !postgresUrl) {
+			throw new Error("DATABASE_URL or POSTGRES_URL is required when PRIMARY_DB=postgres");
 		}
 	}
 
@@ -49,7 +50,15 @@ export class AppConfigService {
 	}
 
 	get postgresUrl(): string | undefined {
-		return this.env.POSTGRES_URL;
+		return this.env.DATABASE_URL ?? this.env.POSTGRES_URL;
+	}
+
+	get postgresPoolMin(): number {
+		return this.env.POSTGRES_POOL_MIN;
+	}
+
+	get postgresPoolMax(): number {
+		return this.env.POSTGRES_POOL_MAX;
 	}
 
 	get amqpUrl(): string {

@@ -28,7 +28,7 @@ export type RedisBroadcastCampaignHash = Record<string, string> & {
 
 export interface PostgresBroadcastCampaignRow {
 	id: string;
-	status: BroadcastCampaignStatus;
+	status: string;
 	message_text: string;
 	audience_username_prefix: string | null;
 	next_identity_cursor: string | null;
@@ -121,7 +121,7 @@ export function broadcastCampaignToPostgresRow(entity: BroadcastCampaignEntity):
 export function postgresRowToBroadcastCampaign(row: PostgresBroadcastCampaignRow): BroadcastCampaignEntity {
 	const snapshot: BroadcastCampaignSnapshot = {
 		id: toBroadcastCampaignId(row.id),
-		status: row.status,
+		status: toBroadcastCampaignStatus(row.status),
 		messageText: row.message_text,
 		audienceUsernamePrefix: row.audience_username_prefix ?? undefined,
 		nextIdentityCursor: row.next_identity_cursor ?? undefined,
@@ -140,4 +140,12 @@ export function postgresRowToBroadcastCampaign(row: PostgresBroadcastCampaignRow
 	};
 
 	return BroadcastCampaignEntity.rehydrate(snapshot);
+}
+
+function toBroadcastCampaignStatus(value: string): BroadcastCampaignStatus {
+	if (value === "draft" || value === "running" || value === "paused" || value === "canceled" || value === "completed") {
+		return value;
+	}
+
+	throw new Error(`Unsupported broadcast campaign status: ${value}`);
 }

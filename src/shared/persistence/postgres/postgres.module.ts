@@ -1,13 +1,16 @@
 import { Global, Module } from "@nestjs/common";
 
-import { POSTGRES_POOL } from "./postgres.constants";
+import { POSTGRES_DB } from "./postgres.constants";
 import { PostgresBootstrapService } from "./postgres-bootstrap.service";
 import { PostgresClientLifecycleService } from "./postgres-client-lifecycle.service";
-import { postgresPoolProvider } from "./postgres.provider";
+import { PostgresExecutionContextService } from "./postgres-execution-context.service";
+import { postgresDatabaseProvider } from "./postgres.provider";
 
 @Global()
 @Module({
-	providers: [postgresPoolProvider, PostgresBootstrapService, PostgresClientLifecycleService],
-	exports: [POSTGRES_POOL],
+	providers: [postgresDatabaseProvider, PostgresBootstrapService, PostgresClientLifecycleService, PostgresExecutionContextService],
+	exports: [POSTGRES_DB, PostgresExecutionContextService],
 })
-export class PostgresModule {}
+export class PostgresKyselyModule {}
+
+export { PostgresKyselyModule as PostgresModule };

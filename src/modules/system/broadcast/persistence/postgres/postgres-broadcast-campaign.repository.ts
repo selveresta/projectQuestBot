@@ -6,84 +6,73 @@ import type { BroadcastCampaignId } from "../../domain/value-objects/broadcast-c
 import {
 	broadcastCampaignToPostgresRow,
 	postgresRowToBroadcastCampaign,
-	type PostgresBroadcastCampaignRow,
 } from "../mappers/broadcast-campaign.mapper";
-import { POSTGRES_POOL } from "../../../../../shared/persistence/postgres/postgres.constants";
-import type { PostgresPool } from "../../../../../shared/persistence/postgres/postgres.provider";
+import { POSTGRES_DB } from "../../../../../shared/persistence/postgres/postgres.constants";
+import { PostgresExecutionContextService } from "../../../../../shared/persistence/postgres/postgres-execution-context.service";
+import type { PostgresDatabaseClient } from "../../../../../shared/persistence/postgres/postgres.provider";
 
 @Injectable()
 export class PostgresBroadcastCampaignRepository implements BroadcastCampaignRepositoryPort {
-	constructor(@Inject(POSTGRES_POOL) private readonly postgresPool: PostgresPool | null) {}
+	constructor(
+		@Inject(POSTGRES_DB) private readonly postgresDb: PostgresDatabaseClient | null,
+		private readonly postgresExecutionContext: PostgresExecutionContextService,
+	) {}
 
 	async getById(id: BroadcastCampaignId): Promise<BroadcastCampaignEntity | null> {
-		const pool = this.requirePool();
-		const result = await pool.query<PostgresBroadcastCampaignRow>(
-			`SELECT id, status, message_text, audience_username_prefix, next_identity_cursor,
-				total_recipients, processed_recipients, succeeded_recipients, failed_recipients,
-				retry_count, dlq_count, last_error_code, last_error_message,
-				created_at, updated_at, started_at, finished_at
-			 FROM broadcast_campaigns
-			 WHERE id = $1`,
-			[id],
-		);
-
-		if (result.rowCount === 0) {
+		const row = await this.getClient()
+			.selectFrom("broadcast_campaigns")
+			.selectAll()
+			.where("id", "=", id)
+			.executeTakeFirst();
+		if (!row) {
 			return null;
 		}
-		return postgresRowToBroadcastCampaign(result.rows[0]);
+		return postgresRowToBroadcastCampaign(row);
 	}
 
 	async save(campaign: BroadcastCampaignEntity): Promise<void> {
-		const pool = this.requirePool();
 		const row = broadcastCampaignToPostgresRow(campaign);
-		await pool.query(
-			`INSERT INTO broadcast_campaigns (
-				id, status, message_text, audience_username_prefix, next_identity_cursor,
-				total_recipients, processed_recipients, succeeded_recipients, failed_recipients,
-				retry_count, dlq_count, last_error_code, last_error_message,
-				created_at, updated_at, started_at, finished_at
-			) VALUES (
-				$1,$2,$3,$4,$5,
-				$6,$7,$8,$9,
-				$10,$11,$12,$13,
-				$14,$15,$16,$17
+		await this.getClient()
+			.insertInto("broadcast_campaigns")
+			.values({
+				id: row.id,
+				status: row.status,
+				message_text: row.message_text,
+				audience_username_prefix: row.audience_username_prefix,
+				next_identity_cursor: row.next_identity_cursor,
+				total_recipients: row.total_recipients,
+				processed_recipients: row.processed_recipients,
+				succeeded_recipients: row.succeeded_recipients,
+				failed_recipients: row.failed_recipients,
+				retry_count: row.retry_count,
+				dlq_count: row.dlq_count,
+				last_error_code: row.last_error_code,
+				last_error_message: row.last_error_message,
+				created_at: row.created_at,
+				updated_at: row.updated_at,
+				started_at: row.started_at,
+				finished_at: row.finished_at,
+			})
+			.onConflict((conflictBuilder) =>
+				conflictBuilder.column("id").doUpdateSet({
+					status: row.status,
+					message_text: row.message_text,
+					audience_username_prefix: row.audience_username_prefix,
+					next_identity_cursor: row.next_identity_cursor,
+					total_recipients: row.total_recipients,
+					processed_recipients: row.processed_recipients,
+					succeeded_recipients: row.succeeded_recipients,
+					failed_recipients: row.failed_recipients,
+					retry_count: row.retry_count,
+					dlq_count: row.dlq_count,
+					last_error_code: row.last_error_code,
+					last_error_message: row.last_error_message,
+					updated_at: row.updated_at,
+					started_at: row.started_at,
+					finished_at: row.finished_at,
+				}),
 			)
-			ON CONFLICT (id) DO UPDATE SET
-				status = EXCLUDED.status,
-				message_text = EXCLUDED.message_text,
-				audience_username_prefix = EXCLUDED.audience_username_prefix,
-				next_identity_cursor = EXCLUDED.next_identity_cursor,
-				total_recipients = EXCLUDED.total_recipients,
-				processed_recipients = EXCLUDED.processed_recipients,
-				succeeded_recipients = EXCLUDED.succeeded_recipients,
-				failed_recipients = EXCLUDED.failed_recipients,
-				retry_count = EXCLUDED.retry_count,
-				dlq_count = EXCLUDED.dlq_count,
-				last_error_code = EXCLUDED.last_error_code,
-				last_error_message = EXCLUDED.last_error_message,
-				updated_at = EXCLUDED.updated_at,
-				started_at = EXCLUDED.started_at,
-				finished_at = EXCLUDED.finished_at`,
-			[
-				row.id,
-				row.status,
-				row.message_text,
-				row.audience_username_prefix,
-				row.next_identity_cursor,
-				row.total_recipients,
-				row.processed_recipients,
-				row.succeeded_recipients,
-				row.failed_recipients,
-				row.retry_count,
-				row.dlq_count,
-				row.last_error_code,
-				row.last_error_message,
-				row.created_at,
-				row.updated_at,
-				row.started_at,
-				row.finished_at,
-			],
-		);
+			.execute();
 	}
 
 	async listByStatuses(
@@ -94,20 +83,15 @@ export class PostgresBroadcastCampaignRepository implements BroadcastCampaignRep
 			return [];
 		}
 
-		const pool = this.requirePool();
-		const result = await pool.query<PostgresBroadcastCampaignRow>(
-			`SELECT id, status, message_text, audience_username_prefix, next_identity_cursor,
-				total_recipients, processed_recipients, succeeded_recipients, failed_recipients,
-				retry_count, dlq_count, last_error_code, last_error_message,
-				created_at, updated_at, started_at, finished_at
-			 FROM broadcast_campaigns
-			 WHERE status = ANY($1::text[])
-			 ORDER BY created_at DESC
-			 LIMIT $2`,
-			[statuses, limit],
-		);
+		const rows = await this.getClient()
+			.selectFrom("broadcast_campaigns")
+			.selectAll()
+			.where("status", "in", [...statuses])
+			.orderBy("created_at", "desc")
+			.limit(limit)
+			.execute();
 
-		return result.rows.map((row) => postgresRowToBroadcastCampaign(row));
+		return rows.map((row) => postgresRowToBroadcastCampaign(row));
 	}
 
 	async listRecent(limit: number): Promise<BroadcastCampaignEntity[]> {
@@ -115,24 +99,19 @@ export class PostgresBroadcastCampaignRepository implements BroadcastCampaignRep
 			return [];
 		}
 
-		const pool = this.requirePool();
-		const result = await pool.query<PostgresBroadcastCampaignRow>(
-			`SELECT id, status, message_text, audience_username_prefix, next_identity_cursor,
-				total_recipients, processed_recipients, succeeded_recipients, failed_recipients,
-				retry_count, dlq_count, last_error_code, last_error_message,
-				created_at, updated_at, started_at, finished_at
-			 FROM broadcast_campaigns
-			 ORDER BY created_at DESC
-			 LIMIT $1`,
-			[limit],
-		);
-		return result.rows.map((row) => postgresRowToBroadcastCampaign(row));
+		const rows = await this.getClient()
+			.selectFrom("broadcast_campaigns")
+			.selectAll()
+			.orderBy("created_at", "desc")
+			.limit(limit)
+			.execute();
+		return rows.map((row) => postgresRowToBroadcastCampaign(row));
 	}
 
-	private requirePool(): PostgresPool {
-		if (!this.postgresPool) {
-			throw new Error("Postgres pool is not initialized");
+	private getClient(): PostgresDatabaseClient {
+		if (!this.postgresDb) {
+			throw new Error("Postgres Kysely client is not initialized");
 		}
-		return this.postgresPool;
+		return this.postgresExecutionContext.getClient(this.postgresDb);
 	}
 }

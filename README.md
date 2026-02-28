@@ -124,6 +124,21 @@ src/
 - `PRIMARY_DB=redis` → repositories resolve to Redis implementations
 - `PRIMARY_DB=postgres` → repositories resolve to Postgres implementations
 - Switch is configured in module DI factories; command/query handlers are unchanged.
+- Postgres repositories use Kysely via `POSTGRES_DB` DI token.
+
+## Postgres SQL Layer (Kysely)
+
+- Kysely is used only in `src/shared/persistence/postgres` and Postgres repository adapters.
+- Repository ports/contracts stay unchanged; domain and CQRS handlers are unaffected.
+- `PostgresKyselyModule` creates a singleton Kysely client from `DATABASE_URL` (fallback `POSTGRES_URL`).
+- `PostgresExecutionContextService` provides transaction-aware query execution for repositories.
+- `PostgresTransactionManagerAdapter` delegates `runInTransaction` to Kysely transactions.
+
+Why Kysely:
+
+- strict compile-time table/column typing
+- SQL-like query builder without heavy ORM runtime
+- safe incremental migration from raw SQL with low behavioral risk
 
 ## Redis Always On
 
@@ -156,6 +171,28 @@ pnpm build
 pnpm dev
 ```
 
+## Kysely How-To
+
+### Add a New Table
+
+1. Extend `PostgresDatabase` in `src/shared/persistence/postgres/postgres.database.ts`.
+2. Add bootstrap/migration logic in the relevant Postgres bootstrap service (schema builder).
+3. Update/create mapper `domain <-> persistence row`.
+
+### Add a New Postgres Repository
+
+1. Keep the repository port in `application/ports` unchanged.
+2. Create repository in `persistence/postgres` and inject `POSTGRES_DB`.
+3. Use `PostgresExecutionContextService.getClient(...)` for transaction-aware queries.
+4. Return domain entities through mappers only.
+
+### Write a Complex Query
+
+1. Start with `db.selectFrom(...).select(...)`.
+2. Use joins/subqueries with Kysely builders (`innerJoin`, `leftJoin`, `where`, `orderBy`, `limit`).
+3. Keep DB-specific conditions in persistence layer only.
+4. Map final rows to domain entities/DTOs in mapper layer.
+
 ## How To Add a New Feature Module
 
 1. Create `src/modules/features/<feature-name>/<feature>.module.ts`.
@@ -169,8 +206,10 @@ pnpm dev
 ## Test Skeleton
 
 - `tests/unit/get-identity-profile.query.spec.ts`
+- `tests/unit/identity/postgres-identity.repository.spec.ts`
 - `tests/integration/redis-identity-repository.spec.ts`
 - `tests/integration/postgres-identity-repository.spec.ts`
+- `tests/integration/postgres-transaction-manager.spec.ts`
 - `tests/integration/rabbitmq-broadcast-pipeline.spec.ts`
 
 ## Broadcast Pipeline (RabbitMQ)
@@ -200,3 +239,4 @@ Persistent broadcast campaigns are implemented in `src/modules/system/broadcast`
   - automatic recovery of running campaigns on startup
 
 Design details: `docs/adr/0001-broadcast-rabbitmq.md`.
+Postgres SQL layer ADR: `docs/adr/0002-kysely-postgres-persistence.md`.

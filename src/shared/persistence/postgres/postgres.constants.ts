@@ -1,1 +1,1 @@
-export { POSTGRES_POOL } from "../../di/tokens";
+export { POSTGRES_DB } from "../../di/tokens";

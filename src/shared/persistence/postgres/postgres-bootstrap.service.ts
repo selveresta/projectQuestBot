@@ -1,31 +1,31 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 
 import { AppConfigService } from "../../config/app-config.service";
-import { POSTGRES_POOL } from "./postgres.constants";
-import type { PostgresPool } from "./postgres.provider";
+import { POSTGRES_DB } from "./postgres.constants";
+import type { PostgresDatabaseClient } from "./postgres.provider";
 
 @Injectable()
 export class PostgresBootstrapService implements OnModuleInit {
 	constructor(
-		@Inject(POSTGRES_POOL) private readonly postgresPool: PostgresPool | null,
+		@Inject(POSTGRES_DB) private readonly postgresDb: PostgresDatabaseClient | null,
 		private readonly config: AppConfigService,
 	) {}
 
 	async onModuleInit(): Promise<void> {
-		if (this.config.primaryDb !== "postgres" || !this.postgresPool) {
+		if (this.config.primaryDb !== "postgres" || !this.postgresDb) {
 			return;
 		}
 
-		await this.postgresPool.query(`
-			CREATE TABLE IF NOT EXISTS identities (
-				id TEXT PRIMARY KEY,
-				telegram_id BIGINT NOT NULL UNIQUE,
-				username TEXT NULL,
-				first_name TEXT NULL,
-				last_name TEXT NULL,
-				created_at TEXT NOT NULL,
-				updated_at TEXT NOT NULL
-			);
-		`);
+		await this.postgresDb.schema
+			.createTable("identities")
+			.ifNotExists()
+			.addColumn("id", "text", (column) => column.primaryKey())
+			.addColumn("telegram_id", "bigint", (column) => column.notNull().unique())
+			.addColumn("username", "text")
+			.addColumn("first_name", "text")
+			.addColumn("last_name", "text")
+			.addColumn("created_at", "text", (column) => column.notNull())
+			.addColumn("updated_at", "text", (column) => column.notNull())
+			.execute();
 	}
 }

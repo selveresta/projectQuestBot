@@ -1,50 +1,54 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 
 import { AppConfigService } from "../../../../../shared/config/app-config.service";
-import { POSTGRES_POOL } from "../../../../../shared/persistence/postgres/postgres.constants";
-import type { PostgresPool } from "../../../../../shared/persistence/postgres/postgres.provider";
+import { POSTGRES_DB } from "../../../../../shared/persistence/postgres/postgres.constants";
+import type { PostgresDatabaseClient } from "../../../../../shared/persistence/postgres/postgres.provider";
 
 @Injectable()
 export class PostgresBroadcastBootstrapService implements OnModuleInit {
 	constructor(
-		@Inject(POSTGRES_POOL) private readonly postgresPool: PostgresPool | null,
+		@Inject(POSTGRES_DB) private readonly postgresDb: PostgresDatabaseClient | null,
 		private readonly config: AppConfigService,
 	) {}
 
 	async onModuleInit(): Promise<void> {
-		if (this.config.primaryDb !== "postgres" || !this.postgresPool) {
+		if (this.config.primaryDb !== "postgres" || !this.postgresDb) {
 			return;
 		}
 
-		await this.postgresPool.query(`
-			CREATE TABLE IF NOT EXISTS broadcast_campaigns (
-				id TEXT PRIMARY KEY,
-				status TEXT NOT NULL,
-				message_text TEXT NOT NULL,
-				audience_username_prefix TEXT NULL,
-				next_identity_cursor TEXT NULL,
-				total_recipients INTEGER NOT NULL DEFAULT 0,
-				processed_recipients INTEGER NOT NULL DEFAULT 0,
-				succeeded_recipients INTEGER NOT NULL DEFAULT 0,
-				failed_recipients INTEGER NOT NULL DEFAULT 0,
-				retry_count INTEGER NOT NULL DEFAULT 0,
-				dlq_count INTEGER NOT NULL DEFAULT 0,
-				last_error_code TEXT NULL,
-				last_error_message TEXT NULL,
-				created_at TEXT NOT NULL,
-				updated_at TEXT NOT NULL,
-				started_at TEXT NULL,
-				finished_at TEXT NULL
-			);
-		`);
+		await this.postgresDb.schema
+			.createTable("broadcast_campaigns")
+			.ifNotExists()
+			.addColumn("id", "text", (column) => column.primaryKey())
+			.addColumn("status", "text", (column) => column.notNull())
+			.addColumn("message_text", "text", (column) => column.notNull())
+			.addColumn("audience_username_prefix", "text")
+			.addColumn("next_identity_cursor", "text")
+			.addColumn("total_recipients", "integer", (column) => column.notNull().defaultTo(0))
+			.addColumn("processed_recipients", "integer", (column) => column.notNull().defaultTo(0))
+			.addColumn("succeeded_recipients", "integer", (column) => column.notNull().defaultTo(0))
+			.addColumn("failed_recipients", "integer", (column) => column.notNull().defaultTo(0))
+			.addColumn("retry_count", "integer", (column) => column.notNull().defaultTo(0))
+			.addColumn("dlq_count", "integer", (column) => column.notNull().defaultTo(0))
+			.addColumn("last_error_code", "text")
+			.addColumn("last_error_message", "text")
+			.addColumn("created_at", "text", (column) => column.notNull())
+			.addColumn("updated_at", "text", (column) => column.notNull())
+			.addColumn("started_at", "text")
+			.addColumn("finished_at", "text")
+			.execute();
 
-		await this.postgresPool.query(`
-			CREATE INDEX IF NOT EXISTS idx_broadcast_campaigns_status
-			ON broadcast_campaigns(status);
-		`);
-		await this.postgresPool.query(`
-			CREATE INDEX IF NOT EXISTS idx_broadcast_campaigns_created_at
-			ON broadcast_campaigns(created_at DESC);
-		`);
+		await this.postgresDb.schema
+			.createIndex("idx_broadcast_campaigns_status")
+			.ifNotExists()
+			.on("broadcast_campaigns")
+			.column("status")
+			.execute();
+		await this.postgresDb.schema
+			.createIndex("idx_broadcast_campaigns_created_at")
+			.ifNotExists()
+			.on("broadcast_campaigns")
+			.column("created_at")
+			.execute();
 	}
 }
