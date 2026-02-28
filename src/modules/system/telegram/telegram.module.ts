@@ -10,7 +10,7 @@ import { TelegramWebhookController } from "./webhook.controller";
 import { TelegramCommandRegistryService } from "./registry/command-registry.service";
 
 @Module({
-	imports: [IdentityModule,],
+	imports: [IdentityModule],
 	controllers: [TelegramWebhookController],
 	providers: [
 		StartCommandHandler,
@@ -20,10 +20,10 @@ import { TelegramCommandRegistryService } from "./registry/command-registry.serv
 		{
 			provide: TELEGRAM_COMMAND_HANDLERS,
 			inject: [StartCommandHandler, StatusCommandHandler],
-			useFactory: (
-				start: StartCommandHandler,
-				status: StatusCommandHandler,
-			): TelegramCommandHandler[] => [start, status],
+			useFactory: (start: StartCommandHandler, status: StatusCommandHandler): TelegramCommandHandler[] => [
+				start,
+				status,
+			],
 		},
 	],
 })

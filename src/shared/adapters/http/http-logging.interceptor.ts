@@ -28,7 +28,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
 							statusCode: response.statusCode,
 							durationMs: Date.now() - startedAt,
 						},
-						"http_request"
+						"http_request",
 					);
 				},
 				error: (error: unknown) => {
@@ -40,10 +40,10 @@ export class HttpLoggingInterceptor implements NestInterceptor {
 							durationMs: Date.now() - startedAt,
 							error,
 						},
-						"http_request_failed"
+						"http_request_failed",
 					);
 				},
-			})
+			}),
 		);
 	}
 }

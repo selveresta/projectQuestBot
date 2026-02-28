@@ -25,12 +25,7 @@ export class StatusCommandHandler implements TelegramCommandHandler {
 				return;
 			}
 
-			await ctx.reply(
-				[
-					`Identity: ${profile.identityId}`,
-					`Telegram ID: ${profile.telegramIdentityId}`,
-				].join("\n"),
-			);
+			await ctx.reply([`Identity: ${profile.identityId}`, `Telegram ID: ${profile.telegramIdentityId}`].join("\n"));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Unknown error";
 			if (message.toLowerCase().includes("rate limit")) {

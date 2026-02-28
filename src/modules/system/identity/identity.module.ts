@@ -15,8 +15,11 @@ import { AppConfigService } from "../../../shared/config/app-config.service";
 		{
 			provide: IDENTITY_REPOSITORY,
 			inject: [AppConfigService, RedisIdentityRepository, PostgresIdentityRepository],
-			useFactory: (config: AppConfigService, redisRepository: RedisIdentityRepository, postgresRepository: PostgresIdentityRepository) =>
-				config.primaryDb === "postgres" ? postgresRepository : redisRepository,
+			useFactory: (
+				config: AppConfigService,
+				redisRepository: RedisIdentityRepository,
+				postgresRepository: PostgresIdentityRepository,
+			) => (config.primaryDb === "postgres" ? postgresRepository : redisRepository),
 		},
 		RegisterTelegramIdentityCommandHandler,
 		GetIdentityProfileQueryHandler,

@@ -19,12 +19,7 @@ export class StartCommandHandler implements TelegramCommandHandler {
 		}
 
 		const result = await this.registerTelegramIdentityCommandHandler.execute(
-			new RegisterTelegramIdentityCommand(
-				ctx.from.id,
-				ctx.from.username,
-				ctx.from.first_name,
-				ctx.from.last_name,
-			),
+			new RegisterTelegramIdentityCommand(ctx.from.id, ctx.from.username, ctx.from.first_name, ctx.from.last_name),
 		);
 
 		const lines = ["Welcome!", `Identity ID: ${result.identity.id}`];

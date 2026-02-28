@@ -1,11 +1,4 @@
-import {
-	ArgumentsHost,
-	Catch,
-	ExceptionFilter,
-	HttpException,
-	HttpStatus,
-	Injectable,
-} from "@nestjs/common";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import type { Request, Response } from "express";
 
 import { PinoLoggerService } from "../logger/pino-logger.service";
@@ -25,8 +18,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		const request = http.getRequest<Request>();
 		const response = http.getResponse<Response>();
 
-		const statusCode =
-			exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+		const statusCode = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 		const responseBody = this.buildResponseBody(exception, request.url, statusCode);
 
 		this.logger.instance.error(
@@ -36,17 +28,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 				path: request.url,
 				exception,
 			},
-			"unhandled_exception"
+			"unhandled_exception",
 		);
 
 		response.status(statusCode).json(responseBody);
 	}
 
-	private buildResponseBody(
-		exception: unknown,
-		path: string,
-		statusCode: number
-	): Record<string, unknown> {
+	private buildResponseBody(exception: unknown, path: string, statusCode: number): Record<string, unknown> {
 		if (exception instanceof HttpException) {
 			const payload = exception.getResponse();
 			if (typeof payload === "string") {

@@ -4,11 +4,7 @@ import type { IdentityRepositoryPort } from "../../application/ports/identity-re
 import type { IdentityEntity } from "../../domain/entities/identity.entity";
 import type { TelegramIdentityId } from "../../domain/value-objects/telegram-identity-id";
 import type { IdentityId } from "../../domain/value-objects/identity-id";
-import {
-	postgresRowToIdentity,
-	type PostgresIdentityRow,
-	identityToPostgresRow,
-} from "../mappers/identity.mapper";
+import { postgresRowToIdentity, type PostgresIdentityRow, identityToPostgresRow } from "../mappers/identity.mapper";
 import { POSTGRES_POOL } from "../../../../../shared/persistence/postgres/postgres.constants";
 import type { PostgresPool } from "../../../../../shared/persistence/postgres/postgres.provider";
 
@@ -56,15 +52,7 @@ export class PostgresIdentityRepository implements IdentityRepositoryPort {
 				first_name = EXCLUDED.first_name,
 				last_name = EXCLUDED.last_name,
 				updated_at = EXCLUDED.updated_at`,
-			[
-				row.id,
-				row.telegram_id,
-				row.username,
-				row.first_name,
-				row.last_name,
-				row.created_at,
-				row.updated_at,
-			],
+			[row.id, row.telegram_id, row.username, row.first_name, row.last_name, row.created_at, row.updated_at],
 		);
 	}
 
