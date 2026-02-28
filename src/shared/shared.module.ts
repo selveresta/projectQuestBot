@@ -2,6 +2,7 @@ import { Global, Module } from "@nestjs/common";
 
 import { RedisCacheAdapter } from "./adapters/cache/redis-cache.adapter";
 import { SystemClockAdapter } from "./adapters/clock/system-clock.adapter";
+import { RedisIdempotencyKeyAdapter } from "./adapters/idempotency/redis-idempotency-key.adapter";
 import { RedisRateLimiterAdapter } from "./adapters/rate-limit/redis-rate-limiter.adapter";
 import { NoopTransactionManagerAdapter } from "./adapters/transaction/noop-transaction-manager.adapter";
 import { PostgresTransactionManagerAdapter } from "./adapters/transaction/postgres-transaction-manager.adapter";
@@ -13,6 +14,7 @@ import { PinoLoggerService } from "./adapters/logger/pino-logger.service";
 import { CACHE_PORT } from "./application/ports/cache.port";
 import { CLOCK_PORT } from "./application/ports/clock.port";
 import { ID_GENERATOR_PORT } from "./application/ports/id-generator.port";
+import { IDEMPOTENCY_KEY_PORT } from "./application/ports/idempotency-key.port";
 import { LOGGER_PORT } from "./application/ports/logger.port";
 import { RATE_LIMITER_PORT } from "./application/ports/rate-limiter.port";
 import { TELEGRAM_IDEMPOTENCY_PORT } from "./application/ports/telegram-idempotency-store.port";
@@ -28,6 +30,7 @@ import { RedisModule } from "./persistence/redis/redis.module";
 	providers: [
 		RedisCacheAdapter,
 		RedisRateLimiterAdapter,
+		RedisIdempotencyKeyAdapter,
 		SystemClockAdapter,
 		RandomIdGeneratorAdapter,
 		NestLoggerAdapter,
@@ -50,6 +53,10 @@ import { RedisModule } from "./persistence/redis/redis.module";
 		{
 			provide: ID_GENERATOR_PORT,
 			useExisting: RandomIdGeneratorAdapter,
+		},
+		{
+			provide: IDEMPOTENCY_KEY_PORT,
+			useExisting: RedisIdempotencyKeyAdapter,
 		},
 		{
 			provide: LOGGER_PORT,
@@ -79,6 +86,7 @@ import { RedisModule } from "./persistence/redis/redis.module";
 		RATE_LIMITER_PORT,
 		CLOCK_PORT,
 		ID_GENERATOR_PORT,
+		IDEMPOTENCY_KEY_PORT,
 		LOGGER_PORT,
 		TRANSACTION_MANAGER_PORT,
 		TELEGRAM_IDEMPOTENCY_PORT,

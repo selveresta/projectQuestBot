@@ -16,6 +16,9 @@ importers:
       "@nestjs/platform-express":
         specifier: ^11.0.12
         version: 11.1.14(@nestjs/common@11.1.14(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.14)
+      amqplib:
+        specifier: ^0.10.9
+        version: 0.10.9
       dotenv:
         specifier: ^17.2.3
         version: 17.3.1
@@ -47,6 +50,9 @@ importers:
       "@eslint/js":
         specifier: ^9.37.0
         version: 9.39.3
+      "@types/amqplib":
+        specifier: ^0.10.8
+        version: 0.10.8
       "@types/express":
         specifier: ^5.0.3
         version: 5.0.6
@@ -298,6 +304,10 @@ packages:
     resolution:
       { integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA== }
 
+  "@types/amqplib@0.10.8":
+    resolution:
+      { integrity: sha512-vtDp8Pk1wsE/AuQ8/Rgtm6KUZYqcnTgNvEHwzCkX8rL7AGsC6zqAfKAAJhUZXFhM/Pp++tbnUHiam/8vVpPztA== }
+
   "@types/body-parser@1.19.6":
     resolution:
       { integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g== }
@@ -450,6 +460,11 @@ packages:
     resolution:
       { integrity: sha512-IWrosm/yrn43eiKqkfkHis7QioDleaXQHdDVPKg0FSwwd/DuvyX79TZnFOnYpB7dcsFAMmtFztZuXPDvSePkFw== }
 
+  amqplib@0.10.9:
+    resolution:
+      { integrity: sha512-jwSftI4QjS3mizvnSnOrPGYiUnm1vI2OP1iXeOUz5pb74Ua0nbf6nPyyTzuiCLEE3fMpaJORXh2K/TQ08H5xGA== }
+    engines: { node: ">=10" }
+
   ansi-styles@4.3.0:
     resolution:
       { integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg== }
@@ -498,6 +513,10 @@ packages:
   buffer-from@1.1.2:
     resolution:
       { integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ== }
+
+  buffer-more-ints@1.0.0:
+    resolution:
+      { integrity: sha512-EMetuGFz5SLsT0QTnXzINh4Ksr+oo4i+UGTXEshiGCQWnsgSs7ZhJ8fzlwQ+OzEMs0MpDAMr1hxnblp5a4vcHg== }
 
   busboy@1.6.0:
     resolution:
@@ -1260,6 +1279,10 @@ packages:
       { integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ== }
     engines: { node: ">=0.6" }
 
+  querystringify@2.2.0:
+    resolution:
+      { integrity: sha512-FIqgj2EUvTa7R50u0rGsyTftzjYmv/a3hO345bZNrqabNqjtgiDMgmo4mkUjd+nzU5oF3dClKqFIPUKybUyqoQ== }
+
   quick-format-unescaped@4.0.4:
     resolution:
       { integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg== }
@@ -1292,6 +1315,10 @@ packages:
   reflect-metadata@0.2.2:
     resolution:
       { integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q== }
+
+  requires-port@1.0.0:
+    resolution:
+      { integrity: sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ== }
 
   resolve-from@4.0.0:
     resolution:
@@ -1516,6 +1543,10 @@ packages:
     resolution:
       { integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg== }
 
+  url-parse@1.5.10:
+    resolution:
+      { integrity: sha512-WypcfiRhfeUP9vvF0j6rw0J3hrWrw6iZv3+22h6iRMJ/8z1Tj6XfLP4DsUix5MhMPnXpiHDoKyoZ/bdCkwBCiQ== }
+
   util-deprecate@1.0.2:
     resolution:
       { integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw== }
@@ -1731,6 +1762,10 @@ snapshots:
 
   "@tsconfig/node16@1.0.4": {}
 
+  "@types/amqplib@0.10.8":
+    dependencies:
+      "@types/node": 24.10.14
+
   "@types/body-parser@1.19.6":
     dependencies:
       "@types/connect": 3.4.38
@@ -1899,6 +1934,11 @@ snapshots:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
+  amqplib@0.10.9:
+    dependencies:
+      buffer-more-ints: 1.0.0
+      url-parse: 1.5.10
+
   ansi-styles@4.3.0:
     dependencies:
       color-convert: 2.0.1
@@ -1939,6 +1979,8 @@ snapshots:
       balanced-match: 4.0.4
 
   buffer-from@1.1.2: {}
+
+  buffer-more-ints@1.0.0: {}
 
   busboy@1.6.0:
     dependencies:
@@ -2526,6 +2568,8 @@ snapshots:
     dependencies:
       side-channel: 1.1.0
 
+  querystringify@2.2.0: {}
+
   quick-format-unescaped@4.0.4: {}
 
   range-parser@1.2.1: {}
@@ -2556,6 +2600,8 @@ snapshots:
       - "@node-rs/xxhash"
 
   reflect-metadata@0.2.2: {}
+
+  requires-port@1.0.0: {}
 
   resolve-from@4.0.0: {}
 
@@ -2748,6 +2794,11 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  url-parse@1.5.10:
+    dependencies:
+      querystringify: 2.2.0
+      requires-port: 1.0.0
 
   util-deprecate@1.0.2: {}
 

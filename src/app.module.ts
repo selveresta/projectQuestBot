@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+import { BroadcastModule } from "./modules/system/broadcast/broadcast.module";
 import { IdentityModule } from "./modules/system/identity/identity.module";
 import { TelegramModule } from "./modules/system/telegram/telegram.module";
 import { NoopJobDispatcherService } from "./shared/adapters/jobs/noop-job-dispatcher.service";
@@ -12,7 +13,7 @@ import { HealthModule } from "./shared/health/health.module";
 import { SharedModule } from "./shared/shared.module";
 
 @Module({
-	imports: [AppConfigModule, SharedModule, HealthModule, IdentityModule, TelegramModule],
+	imports: [AppConfigModule, SharedModule, HealthModule, IdentityModule, TelegramModule, BroadcastModule],
 	providers: [
 		PinoLoggerService,
 		GlobalExceptionFilter,

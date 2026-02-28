@@ -4,9 +4,22 @@ import type { IdentityId } from "../../domain/value-objects/identity-id";
 
 export { IDENTITY_REPOSITORY } from "../../../../../shared/di/tokens";
 
+export interface IdentityCursorPageInput {
+	cursor?: string;
+	limit: number;
+	usernamePrefix?: string;
+}
+
+export interface IdentityCursorPage {
+	items: IdentityEntity[];
+	nextCursor?: string;
+}
+
 export interface IdentityRepositoryPort {
 	getById(id: IdentityId): Promise<IdentityEntity | null>;
 	findByTelegramId(telegramIdentityId: TelegramIdentityId): Promise<IdentityEntity | null>;
+	listByCursor(input: IdentityCursorPageInput): Promise<IdentityCursorPage>;
+	countByUsernamePrefix(usernamePrefix?: string): Promise<number>;
 	save(identity: IdentityEntity): Promise<void>;
 	delete(id: IdentityId): Promise<void>;
 	listByIds(ids: readonly IdentityId[]): Promise<IdentityEntity[]>;

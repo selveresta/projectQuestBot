@@ -1,6 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 
-import type { IdentityRepositoryPort } from "../../application/ports/identity-repository.port";
+import type {
+	IdentityCursorPage,
+	IdentityCursorPageInput,
+	IdentityRepositoryPort,
+} from "../../application/ports/identity-repository.port";
 import type { IdentityEntity } from "../../domain/entities/identity.entity";
 import type { TelegramIdentityId } from "../../domain/value-objects/telegram-identity-id";
 import type { IdentityId } from "../../domain/value-objects/identity-id";
@@ -38,6 +42,36 @@ export class PostgresIdentityRepository implements IdentityRepositoryPort {
 			return null;
 		}
 		return postgresRowToIdentity(rowRes.rows[0]);
+	}
+
+	async listByCursor(input: IdentityCursorPageInput): Promise<IdentityCursorPage> {
+		const pool = this.requirePool();
+		const limit = Math.max(1, input.limit);
+		const rowRes = await pool.query<PostgresIdentityRow>(
+			`SELECT id, telegram_id::text, username, first_name, last_name, created_at, updated_at
+			 FROM identities
+			 WHERE ($1::text IS NULL OR id > $1)
+				AND ($2::text IS NULL OR LOWER(COALESCE(username, '')) LIKE LOWER($2) || '%')
+			 ORDER BY id ASC
+			 LIMIT $3`,
+			[input.cursor ?? null, input.usernamePrefix ?? null, limit],
+		);
+
+		return {
+			items: rowRes.rows.map((row) => postgresRowToIdentity(row)),
+			nextCursor: rowRes.rows.length < limit ? undefined : rowRes.rows[rowRes.rows.length - 1].id,
+		};
+	}
+
+	async countByUsernamePrefix(usernamePrefix?: string): Promise<number> {
+		const pool = this.requirePool();
+		const countRes = await pool.query<{ count: string }>(
+			`SELECT COUNT(*)::text AS count
+			 FROM identities
+			 WHERE ($1::text IS NULL OR LOWER(COALESCE(username, '')) LIKE LOWER($1) || '%')`,
+			[usernamePrefix ?? null],
+		);
+		return Number.parseInt(countRes.rows[0]?.count ?? "0", 10);
 	}
 
 	async save(identity: IdentityEntity): Promise<void> {

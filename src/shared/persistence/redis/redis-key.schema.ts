@@ -5,6 +5,14 @@ export const RedisKeys = {
 	identity: {
 		entity: (identityId: IdentityId): string => `identity:${identityId}`,
 		telegramIndex: (telegramId: TelegramIdentityId): string => `identity:tg:${telegramId}`,
+		index: "identity:index",
+	},
+	broadcast: {
+		campaign: (campaignId: string): string => `broadcast:campaign:${campaignId}`,
+		statusIndex: (status: string): string => `broadcast:campaign:status:${status}`,
+		recentIndex: "broadcast:campaign:recent",
+		idempotencyRecipient: (campaignId: string, identityId: string): string =>
+			`broadcast:idempotency:${campaignId}:${identityId}`,
 	},
 	cache: {
 		identityProfile: (identityId: IdentityId): string => `cache:identity:${identityId}:profile`,

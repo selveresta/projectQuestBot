@@ -66,6 +66,11 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
 		await bot.handleUpdate(update);
 	}
 
+	async sendTextMessage(chatId: number, text: string): Promise<void> {
+		const bot = this.requireBot();
+		await bot.api.sendMessage(chatId, text);
+	}
+
 	private createBot(): Bot<TelegramBotContext> {
 		const bot = new Bot<TelegramBotContext>(this.config.telegramBotToken);
 

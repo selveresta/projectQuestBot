@@ -52,6 +52,10 @@ export class AppConfigService {
 		return this.env.POSTGRES_URL;
 	}
 
+	get amqpUrl(): string {
+		return this.env.AMQP_URL;
+	}
+
 	get primaryDb(): "redis" | "postgres" {
 		return this.env.PRIMARY_DB;
 	}
@@ -86,6 +90,62 @@ export class AppConfigService {
 
 	get idempotencyTtlSeconds(): number {
 		return this.env.IDEMPOTENCY_TTL_SECONDS;
+	}
+
+	get broadcastExchange(): string {
+		return this.env.BROADCAST_EXCHANGE;
+	}
+
+	get broadcastChunkQueue(): string {
+		return this.env.BROADCAST_CHUNK_QUEUE;
+	}
+
+	get broadcastRetryQueue(): string {
+		return this.env.BROADCAST_RETRY_QUEUE;
+	}
+
+	get broadcastDlqQueue(): string {
+		return this.env.BROADCAST_DLQ_QUEUE;
+	}
+
+	get broadcastChunkSize(): number {
+		return this.env.BROADCAST_CHUNK_SIZE;
+	}
+
+	get broadcastPrefetch(): number {
+		return this.env.BROADCAST_PREFETCH;
+	}
+
+	get broadcastConcurrency(): number {
+		return this.env.BROADCAST_CONCURRENCY;
+	}
+
+	get broadcastRetryMaxAttempts(): number {
+		return this.env.BROADCAST_RETRY_MAX_ATTEMPTS;
+	}
+
+	get broadcastRetryBaseDelayMs(): number {
+		return this.env.BROADCAST_RETRY_BASE_DELAY_MS;
+	}
+
+	get broadcastRetryMaxDelayMs(): number {
+		return this.env.BROADCAST_RETRY_MAX_DELAY_MS;
+	}
+
+	get broadcastIdempotencyTtlSeconds(): number {
+		return this.env.BROADCAST_IDEMPOTENCY_TTL_SECONDS;
+	}
+
+	get broadcastGlobalRateLimitPoints(): number {
+		return this.env.BROADCAST_GLOBAL_RATE_LIMIT_POINTS;
+	}
+
+	get broadcastGlobalRateLimitDurationSeconds(): number {
+		return this.env.BROADCAST_GLOBAL_RATE_LIMIT_DURATION_SECONDS;
+	}
+
+	get broadcastRecoveryBatchSize(): number {
+		return this.env.BROADCAST_RECOVERY_BATCH_SIZE;
 	}
 
 	get logLevel(): LevelWithSilent {

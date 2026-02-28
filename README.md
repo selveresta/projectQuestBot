@@ -45,16 +45,23 @@ src/
           postgres/
           mappers/
 
-      quests/
-        quests.module.ts
+      broadcast/
+        broadcast.module.ts
+        broadcast.controller.ts
         domain/
         application/
           commands/
+          queries/
           ports/
+          services/
         persistence/
           redis/
           postgres/
           mappers/
+        adapters/
+          rabbitmq/
+          telegram/
+        workers/
 
       telegram/
         telegram.module.ts
@@ -62,18 +69,6 @@ src/
         webhook.controller.ts
         commands/
         registry/
-
-    features/
-      rewards/
-        rewards.module.ts
-        domain/
-        application/
-          commands/
-          ports/
-        persistence/
-          redis/
-          postgres/
-          mappers/
 
   shared/
     shared.module.ts
@@ -173,6 +168,35 @@ pnpm dev
 
 ## Test Skeleton
 
-- `tests/unit/get-user-profile.query.spec.ts`
-- `tests/integration/redis-user-repository.spec.ts`
-- `tests/integration/postgres-user-repository.spec.ts`
+- `tests/unit/get-identity-profile.query.spec.ts`
+- `tests/integration/redis-identity-repository.spec.ts`
+- `tests/integration/postgres-identity-repository.spec.ts`
+- `tests/integration/rabbitmq-broadcast-pipeline.spec.ts`
+
+## Broadcast Pipeline (RabbitMQ)
+
+Persistent broadcast campaigns are implemented in `src/modules/system/broadcast` with CQRS handlers and a dedicated worker consumer.
+
+- Control plane:
+  - `POST /broadcast/campaigns` (create)
+  - `POST /broadcast/campaigns/:id/start`
+  - `POST /broadcast/campaigns/:id/pause`
+  - `POST /broadcast/campaigns/:id/resume`
+  - `POST /broadcast/campaigns/:id/cancel`
+  - `GET /broadcast/campaigns/:id`
+  - `GET /broadcast/campaigns`
+  - `GET /broadcast/dlq`
+  - `POST /broadcast/dlq/requeue`
+  - `POST /broadcast/dlq/discard`
+- Persistence:
+  - `PRIMARY_DB=redis|postgres` switch for broadcast campaigns repository
+- Redis always-on:
+  - broadcast idempotency keys
+  - global rate-limiter keys
+- Worker behavior:
+  - chunk-based processing with cursor pagination over identities
+  - retry with backoff and Telegram `retry_after` support
+  - DLQ after max attempts
+  - automatic recovery of running campaigns on startup
+
+Design details: `docs/adr/0001-broadcast-rabbitmq.md`.

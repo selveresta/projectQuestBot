@@ -29,6 +29,17 @@ class InMemoryIdentityRepository implements IdentityRepositoryPort {
 		return this.identitiesById.get(identityId) ?? null;
 	}
 
+	async listByCursor(): Promise<{ items: IdentityEntity[]; nextCursor?: string }> {
+		return {
+			items: [...this.identitiesById.values()],
+			nextCursor: undefined,
+		};
+	}
+
+	async countByUsernamePrefix(): Promise<number> {
+		return this.identitiesById.size;
+	}
+
 	async save(identity: IdentityEntity): Promise<void> {
 		this.identitiesById.set(identity.id, identity);
 		this.identitiesByTelegram.set(identity.telegramIdentityId, identity.id);

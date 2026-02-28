@@ -26,5 +26,6 @@ import { TelegramCommandRegistryService } from "./registry/command-registry.serv
 			],
 		},
 	],
+	exports: [TelegramService],
 })
 export class TelegramModule {}

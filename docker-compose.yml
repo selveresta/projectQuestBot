@@ -20,6 +20,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
   app:
     build:
       context: .
@@ -28,6 +35,7 @@ services:
     depends_on:
       - redis
       - postgres
+      - rabbitmq
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -35,6 +43,7 @@ services:
       PRIMARY_DB: ${PRIMARY_DB:-redis}
       REDIS_URL: redis://redis:6379
       POSTGRES_URL: postgres://app:app@postgres:5432/app
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672
       TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
     ports:
