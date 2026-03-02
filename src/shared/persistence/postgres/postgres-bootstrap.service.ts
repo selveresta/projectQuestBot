@@ -1,4 +1,5 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
+import { sql } from "kysely";
 
 import { AppConfigService } from "../../config/app-config.service";
 import { POSTGRES_DB } from "./postgres.constants";
@@ -21,11 +22,16 @@ export class PostgresBootstrapService implements OnModuleInit {
 			.ifNotExists()
 			.addColumn("id", "text", (column) => column.primaryKey())
 			.addColumn("telegram_id", "bigint", (column) => column.notNull().unique())
+			.addColumn("status", "text", (column) => column.notNull().defaultTo("active"))
 			.addColumn("username", "text")
 			.addColumn("first_name", "text")
 			.addColumn("last_name", "text")
 			.addColumn("created_at", "text", (column) => column.notNull())
 			.addColumn("updated_at", "text", (column) => column.notNull())
 			.execute();
+
+		await sql`ALTER TABLE identities ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'`.execute(
+			this.postgresDb,
+		);
 	}
 }

@@ -4,12 +4,15 @@ import { IDENTITY_REPOSITORY, type IdentityRepositoryPort } from "../ports/ident
 import { toTelegramIdentityId } from "../../domain/value-objects/telegram-identity-id";
 import { CACHE_PORT, type CachePort } from "../../../../../shared/application/ports/cache.port";
 import { RATE_LIMITER_PORT, type RateLimiterPort } from "../../../../../shared/application/ports/rate-limiter.port";
+import type { IdentityStatus } from "../../domain/entities/identity.entity";
+import { RateLimitExceededError } from "../../../../../shared/application/errors/rate-limit.error";
 
 const PROFILE_CACHE_TTL_SECONDS = 45;
 
 export interface IdentityProfileView {
 	identityId: string;
 	telegramIdentityId: number;
+	status: IdentityStatus;
 }
 
 export class GetIdentityProfileQuery {
@@ -32,7 +35,7 @@ export class GetIdentityProfileQueryHandler {
 			durationSeconds: 2,
 		});
 		if (!decision.allowed) {
-			throw new Error("Rate limit exceeded for profile request");
+			throw new RateLimitExceededError("Rate limit exceeded for identity profile request");
 		}
 
 		const identity = await this.identityRepository.findByTelegramId(telegramIdentityId);
@@ -49,6 +52,7 @@ export class GetIdentityProfileQueryHandler {
 		const profile: IdentityProfileView = {
 			identityId: identity.id,
 			telegramIdentityId: identity.telegramIdentityId,
+			status: identity.status,
 		};
 
 		await this.cache.set(cacheKey, profile, PROFILE_CACHE_TTL_SECONDS);

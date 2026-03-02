@@ -9,6 +9,7 @@ import type { TelegramBotContext, TelegramCommandHandler } from "../telegram.typ
 @Injectable()
 export class StartCommandHandler implements TelegramCommandHandler {
 	readonly command = "start";
+	readonly requiresIdentity = false;
 
 	constructor(private readonly registerTelegramIdentityCommandHandler: RegisterTelegramIdentityCommandHandler) {}
 

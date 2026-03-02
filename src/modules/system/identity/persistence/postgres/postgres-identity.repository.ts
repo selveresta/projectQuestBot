@@ -83,6 +83,7 @@ export class PostgresIdentityRepository implements IdentityRepositoryPort {
 			.values({
 				id: row.id,
 				telegram_id: row.telegram_id,
+				status: row.status,
 				username: row.username,
 				first_name: row.first_name,
 				last_name: row.last_name,
@@ -92,6 +93,7 @@ export class PostgresIdentityRepository implements IdentityRepositoryPort {
 			.onConflict((conflictBuilder) =>
 				conflictBuilder.column("id").doUpdateSet({
 					telegram_id: row.telegram_id,
+					status: row.status,
 					username: row.username,
 					first_name: row.first_name,
 					last_name: row.last_name,

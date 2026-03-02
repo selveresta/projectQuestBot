@@ -110,6 +110,7 @@ test("GetIdentityProfileQueryHandler returns profile from repositories and cache
 	assert.ok(profile);
 	assert.equal(profile.identityId, "u-1");
 	assert.equal(profile.telegramIdentityId, 111);
+	assert.equal(profile.status, "active");
 
 	const cached = await handler.execute(new GetIdentityProfileQuery(111));
 	assert.deepEqual(cached, profile);

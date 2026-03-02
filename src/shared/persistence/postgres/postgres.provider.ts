@@ -20,7 +20,7 @@ export const postgresDatabaseProvider: Provider = {
 			return null;
 		}
 		if (!config.postgresUrl) {
-			throw new Error("POSTGRES_URL is required when PRIMARY_DB=postgres");
+			throw new Error("DATABASE_URL is required when PRIMARY_DB=postgres");
 		}
 
 		const pool = new Pool({

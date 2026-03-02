@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { GetIdentityProfileQueryHandler } from "./application/queries/get-identity-profile.query";
+import { GetIdentityAccessQueryHandler } from "./application/queries/get-identity-access.query";
 import { RegisterTelegramIdentityCommandHandler } from "./application/commands/register-telegram-identity.command";
 import { IDENTITY_REPOSITORY } from "./application/ports/identity-repository.port";
 import { PostgresIdentityRepository } from "./persistence/postgres/postgres-identity.repository";
@@ -23,7 +24,13 @@ import { AppConfigService } from "../../../shared/config/app-config.service";
 		},
 		RegisterTelegramIdentityCommandHandler,
 		GetIdentityProfileQueryHandler,
+		GetIdentityAccessQueryHandler,
 	],
-	exports: [IDENTITY_REPOSITORY, RegisterTelegramIdentityCommandHandler, GetIdentityProfileQueryHandler],
+	exports: [
+		IDENTITY_REPOSITORY,
+		RegisterTelegramIdentityCommandHandler,
+		GetIdentityProfileQueryHandler,
+		GetIdentityAccessQueryHandler,
+	],
 })
 export class IdentityModule {}

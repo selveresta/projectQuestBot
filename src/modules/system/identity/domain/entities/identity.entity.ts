@@ -3,6 +3,8 @@ import { toIsoDateString } from "../../../../../shared/domain/iso-date";
 import type { TelegramIdentityId } from "../value-objects/telegram-identity-id";
 import type { IdentityId } from "../value-objects/identity-id";
 
+export type IdentityStatus = "active" | "blocked";
+
 export interface IdentitySnapshot {
 	username?: string;
 	firstName?: string;
@@ -12,6 +14,7 @@ export interface IdentitySnapshot {
 export interface IdentityEntitySnapshot extends IdentitySnapshot {
 	id: IdentityId;
 	telegramIdentityId: TelegramIdentityId;
+	status: IdentityStatus;
 	createdAt: IsoDateString;
 	updatedAt: IsoDateString;
 }
@@ -24,10 +27,12 @@ export class IdentityEntity {
 		telegramIdentityId: TelegramIdentityId;
 		now: IsoDateString;
 		identity: IdentitySnapshot;
+		status?: IdentityStatus;
 	}): IdentityEntity {
 		return IdentityEntity.rehydrate({
 			id: params.id,
 			telegramIdentityId: params.telegramIdentityId,
+			status: params.status ?? "active",
 			username: params.identity.username,
 			firstName: params.identity.firstName,
 			lastName: params.identity.lastName,
@@ -36,9 +41,10 @@ export class IdentityEntity {
 		});
 	}
 
-	static rehydrate(snapshot: IdentityEntitySnapshot): IdentityEntity {
+	static rehydrate(snapshot: Omit<IdentityEntitySnapshot, "status"> & { status?: IdentityStatus }): IdentityEntity {
 		return new IdentityEntity({
 			...snapshot,
+			status: snapshot.status ?? "active",
 			createdAt: toIsoDateString(snapshot.createdAt),
 			updatedAt: toIsoDateString(snapshot.updatedAt),
 		});
@@ -50,6 +56,10 @@ export class IdentityEntity {
 
 	get telegramIdentityId(): TelegramIdentityId {
 		return this.snapshot.telegramIdentityId;
+	}
+
+	get status(): IdentityStatus {
+		return this.snapshot.status;
 	}
 
 	toSnapshot(): IdentityEntitySnapshot {
@@ -64,5 +74,17 @@ export class IdentityEntity {
 			lastName: identity.lastName ?? this.snapshot.lastName,
 			updatedAt: now,
 		});
+	}
+
+	withStatus(status: IdentityStatus, now: IsoDateString): IdentityEntity {
+		return IdentityEntity.rehydrate({
+			...this.snapshot,
+			status,
+			updatedAt: now,
+		});
+	}
+
+	isBlocked(): boolean {
+		return this.snapshot.status === "blocked";
 	}
 }

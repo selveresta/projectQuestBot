@@ -1,6 +1,7 @@
 export interface IdentitiesTable {
 	id: string;
 	telegram_id: string;
+	status: string;
 	username: string | null;
 	first_name: string | null;
 	last_name: string | null;

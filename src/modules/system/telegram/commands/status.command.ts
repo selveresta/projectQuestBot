@@ -9,6 +9,7 @@ import type { TelegramBotContext, TelegramCommandHandler } from "../telegram.typ
 @Injectable()
 export class StatusCommandHandler implements TelegramCommandHandler {
 	readonly command = "status";
+	readonly requiresIdentity = true;
 
 	constructor(private readonly getIdentityProfileQueryHandler: GetIdentityProfileQueryHandler) {}
 
@@ -18,21 +19,16 @@ export class StatusCommandHandler implements TelegramCommandHandler {
 			return;
 		}
 
-		try {
-			const profile = await this.getIdentityProfileQueryHandler.execute(new GetIdentityProfileQuery(ctx.from.id));
-			if (!profile) {
-				await ctx.reply("Profile not found. Use /start first.");
-				return;
-			}
-
-			await ctx.reply([`Identity: ${profile.identityId}`, `Telegram ID: ${profile.telegramIdentityId}`].join("\n"));
-		} catch (error) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			if (message.toLowerCase().includes("rate limit")) {
-				await ctx.reply("Too many status requests. Please retry shortly.");
-				return;
-			}
-			throw error;
+		const profile = await this.getIdentityProfileQueryHandler.execute(new GetIdentityProfileQuery(ctx.from.id));
+		if (!profile) {
+			await ctx.reply("Profile not found. Use /start first.");
+			return;
 		}
+
+		await ctx.reply(
+			[`Identity: ${profile.identityId}`, `Telegram ID: ${profile.telegramIdentityId}`, `Status: ${profile.status}`].join(
+				"\n",
+			),
+		);
 	}
 }

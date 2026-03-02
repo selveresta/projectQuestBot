@@ -10,7 +10,6 @@ import { RedisTelegramIdempotencyStoreAdapter } from "./adapters/telegram/redis-
 import { RedisTelegramSessionStoreAdapter } from "./adapters/telegram/redis-session-store.adapter";
 import { RandomIdGeneratorAdapter } from "./adapters/id-generator/random-id-generator.adapter";
 import { NestLoggerAdapter } from "./adapters/logger/nest-logger.adapter";
-import { PinoLoggerService } from "./adapters/logger/pino-logger.service";
 import { CACHE_PORT } from "./application/ports/cache.port";
 import { CLOCK_PORT } from "./application/ports/clock.port";
 import { ID_GENERATOR_PORT } from "./application/ports/id-generator.port";
@@ -93,6 +92,4 @@ import { RedisModule } from "./persistence/redis/redis.module";
 		TELEGRAM_SESSION_STORE_PORT,
 	],
 })
-export class SharedModule {
-	constructor(private readonly _logger: PinoLoggerService) {}
-}
+export class SharedModule {}

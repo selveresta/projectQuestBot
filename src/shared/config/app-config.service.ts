@@ -19,7 +19,6 @@ export class AppConfigService {
 		}
 
 		this.env = parsed.data;
-		const postgresUrl = this.env.DATABASE_URL ?? this.env.POSTGRES_URL;
 		if (this.isProduction()) {
 			if (!this.env.TELEGRAM_WEBHOOK_URL) {
 				throw new Error("TELEGRAM_WEBHOOK_URL is required in production mode");
@@ -28,8 +27,8 @@ export class AppConfigService {
 				throw new Error("TELEGRAM_WEBHOOK_SECRET is required in production mode");
 			}
 		}
-		if (this.env.PRIMARY_DB === "postgres" && !postgresUrl) {
-			throw new Error("DATABASE_URL or POSTGRES_URL is required when PRIMARY_DB=postgres");
+		if (this.env.PRIMARY_DB === "postgres" && !this.env.DATABASE_URL) {
+			throw new Error("DATABASE_URL is required when PRIMARY_DB=postgres");
 		}
 	}
 
@@ -42,7 +41,7 @@ export class AppConfigService {
 	}
 
 	get telegramBotToken(): string {
-		return this.env.BOT_TOKEN;
+		return this.env.TELEGRAM_BOT_TOKEN;
 	}
 
 	get redisUrl(): string {
@@ -50,7 +49,7 @@ export class AppConfigService {
 	}
 
 	get postgresUrl(): string | undefined {
-		return this.env.DATABASE_URL ?? this.env.POSTGRES_URL;
+		return this.env.DATABASE_URL;
 	}
 
 	get postgresPoolMin(): number {
@@ -63,6 +62,10 @@ export class AppConfigService {
 
 	get amqpUrl(): string {
 		return this.env.AMQP_URL;
+	}
+
+	get brokerEnabled(): boolean {
+		return this.env.BROKER_ENABLED;
 	}
 
 	get primaryDb(): "redis" | "postgres" {
@@ -95,6 +98,33 @@ export class AppConfigService {
 
 	get telegramSessionEnabled(): boolean {
 		return this.env.TELEGRAM_SESSION_ENABLED;
+	}
+
+	get telegramAllowlistIds(): readonly number[] {
+		return parseNumericList(this.env.TELEGRAM_ALLOWLIST_IDS);
+	}
+
+	get telegramAdminIds(): readonly number[] {
+		return parseNumericList(this.env.TELEGRAM_ADMIN_IDS);
+	}
+
+	get enabledFeatures(): ReadonlySet<string> {
+		return new Set<string>(parseStringList(this.env.FEATURES_ENABLED));
+	}
+
+	isFeatureEnabled(featureName: string): boolean {
+		return this.enabledFeatures.has(featureName);
+	}
+
+	isFeatureFlagEnabled(featureFlag: string): boolean {
+		switch (featureFlag) {
+			case "feature.template-ping":
+				return this.env.FEATURE_TEMPLATE_PING_ENABLED;
+			case "feature.template-admin-status":
+				return this.env.FEATURE_TEMPLATE_ADMIN_STATUS_ENABLED;
+			default:
+				return parseStringList(this.env.FEATURES_ENABLED).includes(featureFlag);
+		}
 	}
 
 	get idempotencyTtlSeconds(): number {
@@ -168,4 +198,17 @@ export class AppConfigService {
 	isProduction(): boolean {
 		return this.env.NODE_ENV === "production";
 	}
+}
+
+function parseStringList(raw: string): string[] {
+	return raw
+		.split(",")
+		.map((value) => value.trim())
+		.filter((value) => value.length > 0);
+}
+
+function parseNumericList(raw: string): number[] {
+	return parseStringList(raw)
+		.map((value) => Number.parseInt(value, 10))
+		.filter((value) => Number.isSafeInteger(value) && value > 0);
 }
